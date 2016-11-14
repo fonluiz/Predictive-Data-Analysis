@@ -17,8 +17,7 @@ library(tidyr)
 
 alunos_ufcg <- read.csv("../data/alunosUFCGAnon.csv")
 ```
-
-Para responder essa questão, é interessante vermos as distribuição das médias de cada curso em um boxplot para sabermos onde está a mediana e o primeiro e o terceiro quartis das notas de cada curso. Inicialmente faremos esta análise considerando os alunos reprovados por falta, cuja nota é contabilizada como 0.
+Para responder essa questão, é interessante vermos as distribuição das médias de cada curso em um boxplot para sabermos onde está a mediana e o primeiro e o terceiro quartis das notas de cada curso. 
 
 ```{r}
 alunos_ufcg$Cod_Curso <- as.factor(alunos_ufcg$Cod_Curso)
@@ -48,7 +47,6 @@ ggplot(alunos_filtrados, aes(y = Media_Disciplina, x = cursos_por_mediana, colou
   labs(title = "Notas dos alunos da UFCG por curso",
        subtitle = "Incluindo reprovações por falta",
        x = "Nome do curso", y = "Notas", colour = "Campus") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   coord_flip()
 ```
 
@@ -64,6 +62,28 @@ E os cursos com as medianas mais baixas são:
 *ENGENHARIA DE ALIMENTOS - D, campus 1 (mediana = 3,9)
 *ESTATÍSTICA - D, campus 1 (mediana = 4,2)
 
+Um indicativo que encontrei para tentar saber porque esse cursos possuem melhores e piores notas foi o percentual de alunos reprovados por faltas dentre os alunos de cada curso.
+```{r}
+reprovacoes_por_falta <- alunos_ufcg %>%
+  group_by(Cod_Curso, Nome_Curso, Campus) %>%
+  summarise(Reprovados_Por_Falta = sum(Situacao == "Reprovado por Falta"),
+            Total_Alunos = n()) %>%
+  ungroup() %>%
+  mutate(Percent_Reprovados_Por_Falta = Reprovados_Por_Falta/Total_Alunos) %>%
+  arrange(desc(Percent_Reprovados_Por_Falta))
+
+reprovacoes_por_falta$Nome_Curso_Campus <- paste(reprovacoes_por_falta$Nome_Curso, reprovacoes_por_falta$Campus, sep = " - ")
+
+reprovacoes_por_falta <- rbind(head(reprovacoes_por_falta, 12), tail(reprovacoes_por_falta, 12))
+
+ggplot(reprovacoes_por_falta, aes(y = Percent_Reprovados_Por_Falta, x = reorder(Nome_Curso_Campus, Percent_Reprovados_Por_Falta), fill = as.factor(Campus))) +
+  geom_bar(stat="identity") +
+  labs(title = "Percentual de reprovados por faltas dentre os alunos",
+       x = "Nome do curso e campus", y = "Percentual", fill = "Campus") +
+  coord_flip()
+```
+Os cursos de Física e Estatística do campus 1, que possuem as piores notas, também possuem os índices mais altos de reprovados por falta. E os cursos de Medicina e Direito (M e V) possuem os menores índices de reprovações por falta assim como possuem as notas mais altas. É claro que essa não é uma regra, já que há cursos dentre os que tem notas mais altas que não estão dentre os que possuem menores indices de reprovados por falta. Mas sabendo que os alunos reprovados por falta são contabilizados como nota 0, é de se esperar que a mediana de um curso com altos índices de reprovações por falta sofra influência dessas notas baixas.
+Desconsiderando os alunos repro'
 2) Em qual período estão as melhores e piores notas do curso de Ciência da Computação?
 
 Novamente, vamos considerar os alunos que reprovaram por falta.
