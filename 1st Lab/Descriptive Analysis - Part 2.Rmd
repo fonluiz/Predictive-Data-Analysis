@@ -1,43 +1,52 @@
 ---
 title: 'Lab 1 - Parte 2: Nossas perguntas'
+author: 'Luiz Fonseca'
+date: '16/11/2016'
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-1) Em quais cursos estão as melhores e piores notas? Por que você acha que isso acontece em cada caso?
-
-Primeiro vamos carregar os dados
-```{r}
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+```
+
+### Parte 1
+<b> Em quais cursos estão as melhores e piores notas? Por que você acha que isso acontece em cada caso? </b>
+
+<p> Primeiro vamos carregar os dados </p>
+```{r}
+# library(ggplot2)
+# library(dplyr)
+# library(tidyr)
 
 alunos_ufcg <- read.csv("../data/alunosUFCGAnon.csv")
 ```
-Para responder essa questão, é interessante vermos as distribuição das médias de cada curso em um boxplot para sabermos onde está a mediana e o primeiro e o terceiro quartis das notas de cada curso. 
 
-```{r}
+<p>Para responder essa questão, é interessante vermos as distribuição das médias de cada curso em um boxplot para sabermos onde está a mediana, o primeiro e o terceiro quartis das notas de cada curso. </p>
+
+```{r, fig.width=9}
 alunos_ufcg$Cod_Curso <- as.factor(alunos_ufcg$Cod_Curso)
 
 cursos_por_mediana <- with(alunos_ufcg, reorder(Cod_Curso, Media_Disciplina, median, na.rm = TRUE))
 
-ggplot(alunos_ufcg, aes(y = Media_Disciplina, x = cursos_por_mediana)) +
-  geom_boxplot(na.rm = TRUE) +
-  labs(title = "Notas dos alunos da UFCG por curso", x = "Código do curso", y = "Notas") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-  
 medianas_cursos <- alunos_ufcg %>% 
   group_by(Cod_Curso, Nome_Curso, Campus) %>%
   summarise(Mediana_Notas = median(Media_Disciplina, na.rm = TRUE)) %>% 
   ungroup() %>%
   arrange(desc(Mediana_Notas))
-```
-Como são muitos cursos, fica muito difícil visualizar todos em um único gráfico. Filtrando os cursos com menores e maiores medianas podemos visualizar melhor.
 
-```{r}
+ggplot(alunos_ufcg, aes(y = Media_Disciplina, x = cursos_por_mediana)) +
+  geom_boxplot(na.rm = TRUE) +
+  labs(title = "Notas dos alunos da UFCG por curso", x = "Código do curso", y = "Notas") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+<p> Como são muitos cursos, fica muito difícil visualizar todos em um único gráfico. Filtrando os cursos com menores e maiores medianas poderemos visualizar melhor. </p>
+
+```{r, echo = FALSE}
 cursos_filtrados <- rbind(head(medianas_cursos, 5), tail(medianas_cursos, 5))
 alunos_filtrados <- inner_join(alunos_ufcg, cursos_filtrados, by = "Cod_Curso")
 
@@ -50,19 +59,23 @@ ggplot(alunos_filtrados, aes(y = Media_Disciplina, x = cursos_por_mediana, colou
   coord_flip()
 ```
 
-Como podemos observar no gráfico, os cursos com as medianas mais altas são:
-*DIREITO - M, campus 3 (mediana = 8,6)
-*PSICOLOGIA - N, campus 1 (mediana = 8,5)
-*MÚSICA (BAC) - D, campus 1 (mediana = 8,5)
-*MEDICINA - D, campus 2 (mediana = 8,5)
-*DIREITO - V, campus 3 (mediana = 8,5)
+<p> Como podemos observar no gráfico, os cursos com as medianas mais altas são:
+<ul>
+<li> DIREITO - M, campus 3 (mediana = 8,6) </li>
+<li> PSICOLOGIA - N, campus 1 (mediana = 8,5) </li>
+<li> MÚSICA (BAC) - D, campus 1 (mediana = 8,5) </li>
+<li> MEDICINA - D, campus 2 (mediana = 8,5) </li>
+<li> DIREITO - V, campus 3 (mediana = 8,5) </li>
+</ul>
 
 E os cursos com as medianas mais baixas são:
-*FÍSICA (LIC) - D, campus 1 (mediana = 0,7)
-*ENGENHARIA DE ALIMENTOS - D, campus 1 (mediana = 3,9)
-*ESTATÍSTICA - D, campus 1 (mediana = 4,2)
+<ul>
+<li> FÍSICA (LIC) - D, campus 1 (mediana = 0,7) </li>
+<li> ENGENHARIA DE ALIMENTOS - D, campus 1 (mediana = 3,9) </li>
+<li> ESTATÍSTICA - D, campus 1 (mediana = 4,2) </li>
+</ul>
 
-Um indicativo que encontrei para tentar saber porque esse cursos possuem melhores e piores notas foi o percentual de alunos reprovados por faltas dentre os alunos de cada curso.
+Um indicativo que encontrei para tentar saber porque esse cursos possuem melhores e piores notas foi o percentual de alunos reprovados por faltas dentre os alunos de cada curso. </p>
 ```{r}
 reprovacoes_por_falta <- alunos_ufcg %>%
   group_by(Cod_Curso, Nome_Curso, Campus) %>%
@@ -82,35 +95,69 @@ ggplot(reprovacoes_por_falta, aes(y = Percent_Reprovados_Por_Falta, x = reorder(
        x = "Nome do curso e campus", y = "Percentual", fill = "Campus") +
   coord_flip()
 ```
-Os cursos de Física e Estatística do campus 1, que possuem as piores notas, também possuem os índices mais altos de reprovados por falta. E os cursos de Medicina e Direito (M e V) possuem os menores índices de reprovações por falta assim como possuem as notas mais altas. É claro que essa não é uma regra, já que há cursos dentre os que tem notas mais altas que não estão dentre os que possuem menores indices de reprovados por falta. Mas sabendo que os alunos reprovados por falta são contabilizados como nota 0, é de se esperar que a mediana de um curso com altos índices de reprovações por falta sofra influência dessas notas baixas.
-Desconsiderando os alunos repro'
-2) Em qual período estão as melhores e piores notas do curso de Ciência da Computação?
 
-Novamente, vamos considerar os alunos que reprovaram por falta.
+<p> Os cursos de Física e Estatística do campus 1, que possuem as piores notas, também possuem os índices mais altos de reprovados por falta. E os cursos de Medicina e Direito (M e V) possuem os menores índices de reprovações por falta assim como possuem as notas mais altas. É claro que essa não é uma regra, já que há cursos dentre os que tem notas mais altas que não estão dentre os que possuem menores indices de reprovados por falta. Mas sabendo que os alunos reprovados por falta são contabilizados como nota 0, é de se esperar que a mediana de um curso com altos índices de reprovações por falta sofra influência dessas notas baixas. Então um dos motivos para que estes cursos possuam notas baixas é a alta quantidade de alunos que desistem das disciplinas. </p>
+
+<p> Considerando os cinco cursos com melhores piores notas, podemos notar que os cursos com piores notas estão na área de exatas, principalmente cursos que exigem muito conhecimento matemático como Física e Estatística. Já os cursos com melhores notas estão na área de humanas/biológicas e geralmente são cursos com alta concorrência no vestibular como Medicina e Direito.</p>
+
+### Parte 2
+<b>Em qual período estão as melhores e piores notas do curso de Ciência da Computação?</b>
+
+<p> Para responder essa questão, farei o mesmo tipo de análise da questão anterior, utilizando boxplots para cada período. Como não ficou especificado na questão, farei uma análise para o período absoluto e outra para o período relativo.</p>
 
 ```{r}
 alunos_computacao <-
   alunos_ufcg %>% filter(Nome_Curso == "CIÊNCIA DA COMPUTAÇÃO - D")
 
+periodos_abs_por_mediana <- with(alunos_computacao, reorder(Periodo, Media_Disciplina, median, na.rm = TRUE))
 ggplot(alunos_computacao, aes(
-  x = reorder(Periodo, Media_Disciplina, FUN = median),
+  x = periodos_abs_por_mediana,
   y = Media_Disciplina
 )) +
   geom_boxplot(na.rm = TRUE) +
   coord_flip() +
-  labs(title = "Notas dos alunos de Computação por período", x = "Períodos", y = "Notas")
+  labs(title = "Notas dos alunos de Computação por período absoluto", x = "Períodos", y = "Notas")
 
-medianas_periodos_computacao <-
+medianas_periodos_abs_computacao <-
   alunos_computacao %>% group_by(Periodo) %>%
-  summarise(mediana_notas = median(Media_Disciplina, na.rm = TRUE)) %>% 
-  arrange(desc(mediana_notas))
+  summarise(Mediana_Notas = median(Media_Disciplina, na.rm = TRUE)) %>% 
+  arrange(Periodo)
+
+periodos_rel_por_mediana <- with(alunos_computacao, reorder(Periodo_Relativo, Media_Disciplina, median, na.rm = TRUE))
+
+ggplot(alunos_computacao, aes(
+  x = periodos_rel_por_mediana,
+  y = Media_Disciplina
+)) +
+  geom_boxplot(na.rm = TRUE) +
+  coord_flip() +
+  labs(title = "Notas dos alunos de Computação por período relativo", x = "Períodos", y = "Notas")
 ```
  
- Como podemos observar no grafico e na tabela medianas_periodos_computacao, o período com as maiores notas foi 2002.1, com uma mediana de 8,2, e os períodos com as menores notas foram toddos desde 2009.1 até 2014.1, todos com uma mediana de 7,0.
+<p> Como podemos observar no grafico, o período com as maiores notas foi 2002.1, com uma mediana de 8,2, e os períodos com as menores notas foram todos desde 2009.2 até 2014.1, exceto 2010.2, todos com uma mediana de 7,0. </p>
+
+<p> Observando os períodos relativos, podemos identificar um padrão. Até o 9º período, as notas vão aumentando e a partir do décimo, vão diminuindo. De fato, se mostrarmos esse dados em uma "linha do tempo relativa", podemos ver melhor o crescimento das medianas até o nono período e depois como as notas vão caindo. Isto significa que até o nono período, o desempenho dos alunos vai melhorando, porém depois disso, a tendência é decair. </p>
+
+```{r}
+medianas_periodos_rel_computacao <-
+  alunos_computacao %>% group_by(Periodo_Relativo) %>%
+  summarise(Mediana_Notas = median(Media_Disciplina, na.rm = TRUE)) %>% 
+  arrange(Periodo_Relativo)
+
+medianas_periodos_rel_computacao <- medianas_periodos_rel_computacao %>%
+  filter(Periodo_Relativo <= 15)
+
+ggplot(medianas_periodos_rel_computacao, aes(x = Periodo_Relativo, y = Mediana_Notas)) +
+ geom_point() + geom_line() +
+  labs(title = "Medianas da notas ao longo dos períodos relativos", 
+       x = "Período relativo", y = "Mediana")
+
+```
+
+### Parte 3
+<b>Existe correlação entre as notas de Matemática Discreta e Cáclulo I para o curso de Ciência da Computação? Se sim, a correlação é positiva ou negativa? Qual a força dessa correlação? (Dica: cada par ordenada de notas (x,y) onde x é a nota de Cálculo I e y de Matemática Discreta corresponde a um aluno que cursou as duas disciplinas). </b>
  
- 3) Existe correlação entre as notas de Matemática Discreta e Cáclulo I para o curso de Ciência da Computação? Se sim, a correlação é positiva ou negativa? Qual a força dessa correlação? (Dica: cada par ordenada de notas (x,y) onde x é a nota de Cálculo I e y de Matemática Discreta corresponde a um aluno que cursou as duas disciplinas).
- 
- Para responder essa questão foi preciso primeiro fazer um preprocessamento dos dados. Eu dividi um subconjunto só com alunos que haviam pagado matemática discreta e outro só para alunos que haviam pagado cálculo I. Os subconjuntos possuem tamanhos diferentes. Observando os dados, percebi que algumas matrículas se repetem em ambos os subconjuntos e então resolvi que para alunos que haviam pagado a disciplina mais de uma vez, seria considerada a média de todas as vezes que pagaram a disciplina. Também observou-se que haviam matrículas de alunos em um subconjunto e não no outro. Então eu usei a função inner_join para fazer um merge dos data frames e continuar apenas com dados de matrículas que estão em ambos os subconjuntos. Feito isso, calculei a correlação entre as médias das disciplinas, que resultou em torno de 0,717. Isto significa que há uma forte correlação positiva (próximo de 1) entre as notas das disciplinas, ou seja, quem tira nota boa em uma tira nota boa na outra.
+<p> Para responder essa questão foi preciso primeiro fazer um preprocessamento dos dados. Eu dividi um subconjunto só com alunos que haviam pagado matemática discreta e outro só para alunos que haviam pagado cálculo I. Os subconjuntos possuem tamanhos diferentes. Observando os dados, percebi que algumas matrículas se repetem em ambos os subconjuntos e então resolvi que para alunos que haviam pagado a disciplina mais de uma vez, seria considerada a média de todas as vezes que pagaram a disciplina. Eu escolhi utilizar a média, e não a última nota apenas, para refletir a dificuldade dos alunos na disciplina. Por exemplo, se um aluno reprovou uma vez com media cinco e foi aprovado na segunda com media 9, sua media seria 7. Se fosse considerado apenas o nove, estaria-se escondendo o fato de que o aluno ja reprovou uma vez a disciplina. Também observou-se que haviam matrículas de alunos em um subconjunto e não no outro. Então eu usei a função inner_join para fazer um merge dos data frames e continuar apenas com dados de matrículas que estão em ambos os subconjuntos. Feito isso, calculei a correlação entre as médias das disciplinas, que resultou em torno de 0,717. Isto significa que há uma forte correlação positiva (maior que 0,5) entre as notas das disciplinas, ou seja, quem tira nota boa em uma tira nota boa na outra. </p>
  
 ```{r}
 alunos_calculo1 <- alunos_computacao %>%
@@ -131,5 +178,6 @@ ggplot(alunos_calculo1_discreta, aes(x=Media_Calculo1, y=Media_Mat_Discreta)) +
   labs(title = "Correlação entre notas de disciplinas", x = "Notas Cálculo I", y = "Notas Matemática Discreta")
 
 correlacao <- cor(alunos_calculo1_discreta$Media_Calculo1, alunos_calculo1_discreta$Media_Mat_Discreta)
+# [1] 0.7174981
 ```
 
