@@ -1,0 +1,93 @@
+---
+title: "Lab 1 - Parte 3: Suas Perguntas"
+author: "Luiz Fonseca"
+date: "16 de novembro de 2016"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(reshape2)
+```
+
+Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
+
+```{r}
+# library(dplyr)
+# library(ggplot2)
+
+alunos_ufcg <- read.csv("data/alunosUFCGAnon.csv")
+```
+
+## Atividade 1
+Perguntas:
+1) Para o curso de Ciência da Computação do campus 1, de uma forma geral, as notas aumentam ou diminuem ao longo do curso?
+2) Como estão distribuídas as notas dos alunos nos diferentes turnos: matutino, vespertino, diurno e noturno?
+3)É grande (ou pequena) a porcentagem de alunos que trancou ou reprovou uma disciplina optativa e depois voltou a se matricular na mesma disciplina? Em qual curso isso mais ocorre?
+
+Respostas antes da análise:
+1) Eu acho que as notas aumentam ao longo do curso por alguns motivos. O primeiro é que no começo do curso geralmente os estudantes estão desacostumados com o ritmo de estudo do Ensino Superior, que é mais desgastante do que o ritmo do Ensino Médio. O segundo motivo é que conforme os alunos vão avançando no curso, acho que o sentimento de competitividade vai aumentando e faz os alunos se esforçarem mais. Outro motivo que acho é que conforme os alunos vão se engajando no mundo da computação, as disciplinas se tornam mais interessantes e mais fáceis de aprender, até porque depois de um tempo o aluno já deve ter aprendido tecnologias que o auxiliarão nas disciplinas mais adiante.
+
+2) Acho que os cursos de um único turno podem possuir notas mais altas do que os cursos diurnos (manhã e tarde) e dentre os cursos de único turno, acho que o da noite deve possuir notas mais baixas. Eu considero que os cursos que ocorrem em dois turnos são mais difíceis e mais estressantes, além de que o estudante terá menos tempo para estudar em casa e fazer atividades lúdicas para desestressar. Acho que o turno da noite possui notas mais baixas em comparação com os outros turnos únicos porque é um período mais cansativo, por ser no final do dia.
+
+3) Eu acho que essa porcentagem deva ser menor que 50%. Isso porque se um aluno se der mal em uma disciplina que não é obrigatória, provavelmente, ele não irá querer cursá-la novamente por conta da sua experiência anterior ruim.
+
+-------------------
+
+## Atividade 2
+
+As perguntas que escolhi responder foram 1 e 2.
+
+1) Para o curso de Ciência da Computação do campus 1, de uma forma geral, as notas aumentam ou diminuem ao longo do curso?
+
+Para esta análise considerarei apenas os alunos que cumpriram no mínimo oito semestres pois sabemos que há alunos que reingressam com uma matrícula diferente para retirar as notas baixas do currículo. Há poucos alunos que completaram o curso em mais de 14 períodos. Esses estudantes não foram considerados nesta análise pois representam casos não frequentes e não se enquadram no objetivo da pergunta.
+
+```{r}
+alunos_computacao <- alunos_ufcg %>% filter(Nome_Curso == "CIÊNCIA DA COMPUTAÇÃO - D")
+
+media_alunos_por_periodo <- alunos_computacao %>% 
+  group_by(Matricula) %>% 
+  mutate(Total_Periodos = max(Periodo_Relativo)) %>%
+  filter(Total_Periodos >= 8 & Total_Periodos <= 16) %>%
+  group_by(Matricula, Periodo_Relativo) %>%
+  summarise(Media_Periodo = round(mean(Media_Disciplina, na.rm = TRUE), 2)) %>%
+  arrange(Matricula, Periodo_Relativo) %>%
+  ungroup() %>% 
+  group_by(Matricula) %>%
+  mutate(Evolucao_Media = ifelse(Media_Periodo > lag(Media_Periodo),
+                                 "aumentou", 
+                                 ifelse(Media_Periodo == lag(Media_Periodo),
+                                        "igual",
+                                        "diminuiu")))
+
+evolucao_por_periodo <- media_alunos_por_periodo %>%
+  group_by(Periodo_Relativo) %>%
+  summarise(total_aumentou = sum(Evolucao_Media == "aumentou", na.rm = TRUE),
+            total_igual = sum(Evolucao_Media == "igual", na.rm = TRUE),
+            total_diminuiu = sum(Evolucao_Media == "diminuiu", na.rm = TRUE)) %>%
+  filter(Periodo_Relativo != 1)
+  
+evolucao_por_periodo$total_alunos = evolucao_por_periodo$total_aumentou +
+  evolucao_por_periodo$total_igual + evolucao_por_periodo$total_diminuiu
+
+evolucao_por_periodo <- evolucao_por_periodo %>%
+  mutate(perc_aumentou = round(total_aumentou / total_alunos, 3) * 100,
+         perc_igual = round(total_igual / total_alunos, 3)  * 100,
+         perc_diminuiu = round(total_diminuiu / total_alunos, 3)  * 100) %>%
+  select(-total_alunos, -total_aumentou, -total_igual, -total_diminuiu)
+
+evolucao_melted <- melt(cbind(evolucao_por_periodo, periodo = as.numeric(rownames(evolucao_por_periodo)) + 1), id.vars = c('periodo'), c(2,3,4))
+
+ggplot(evolucao_melted,aes(x = as.factor(periodo), y = value,fill = variable)) + 
+    geom_bar(position = "fill",stat = "identity") + 
+    scale_fill_discrete(labels=c("Aumentou", "Igual", "Diminuiu")) +
+  labs(title = "Percentual de alunos que aumentaram a média com relação ao período anterior", x = "Período relativo", y = "Percentual", fill = "Se aumentou")
+```
+
