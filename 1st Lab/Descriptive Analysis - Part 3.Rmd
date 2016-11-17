@@ -39,17 +39,16 @@ Respostas antes da análise:
 
 3) Eu acho que essa porcentagem deva ser menor que 50%. Isso porque se um aluno se der mal em uma disciplina que não é obrigatória, provavelmente, ele não irá querer cursá-la novamente por conta da sua experiência anterior ruim.
 
--------------------
-
 ## Atividade 2
 
 As perguntas que escolhi responder foram 1 e 2.
 
-1) Para o curso de Ciência da Computação do campus 1, de uma forma geral, as notas aumentam ou diminuem ao longo do curso?
+#### Pergunta 1
+<b> Para o curso de Ciência da Computação do campus 1, de uma forma geral, as notas aumentam ou diminuem ao longo do curso? </b>
 
-Para esta análise considerarei apenas os alunos que cumpriram no mínimo oito semestres pois sabemos que há alunos que reingressam com uma matrícula diferente para retirar as notas baixas do currículo. Há poucos alunos que completaram o curso em mais de 14 períodos. Esses estudantes não foram considerados nesta análise pois representam casos não frequentes e não se enquadram no objetivo da pergunta.
-
-```{r}
+Para esta análise considerarei apenas as matrículas que cumpriram no mínimo oito semestres pois sabemos que há alunos que reingressam com uma matrícula diferente para retirar as notas baixas do currículo. Há poucos alunos que completaram o curso em mais de 14 períodos. Esses estudantes não foram considerados nesta análise pois representam casos não frequentes e não se enquadram no objetivo da pergunta.
+Para tentar responder essa pergunta eu pensei em calcular a média das disciplinas de cada aluno em cada período que ele cursou e comparar se a média de um período aumentou ou diminuiu com relação ao período anterior. Depois, para cada período foi plotado o percentual de alunos cuja média aumentou, diminuiu e permaneceu igual quando comparado com o período anterior.
+```{r, fig.width=9}
 alunos_computacao <- alunos_ufcg %>% filter(Nome_Curso == "CIÊNCIA DA COMPUTAÇÃO - D")
 
 media_alunos_por_periodo <- alunos_computacao %>% 
@@ -90,4 +89,28 @@ ggplot(evolucao_melted,aes(x = as.factor(periodo), y = value,fill = variable)) +
     scale_fill_discrete(labels=c("Aumentou", "Igual", "Diminuiu")) +
   labs(title = "Percentual de alunos que aumentaram a média com relação ao período anterior", x = "Período relativo", y = "Percentual", fill = "Se aumentou")
 ```
+
+A partir do gráfico podemos perceber que a diferença entre as porcentagens não é gritante e então não podemos afirmar que a média aumenta ou diminui com o decorrer do curso.
+
+#### Pergunta 2
+<b> Como estão distribuídas as notas dos alunos nos diferentes turnos: matutino, vespertino, diurno e noturno? </b>
+
+```{r}
+get_turno <- function(nome_curso) {
+  turno <- substring(nome_curso, nchar(nome_curso))
+  return(
+    ifelse(turno == "A" | turno == "D", "Diurno", 
+           ifelse(turno == "N", "Noturno", 
+                  ifelse(turno == "M", "Matutino", "Vespertino")))
+  )
+}
+
+alunos_ufcg$Turno_Curso = get_turno(as.character(alunos_ufcg$Nome_Curso))
+
+turnos_por_mediana <- with(alunos_ufcg, reorder(Turno_Curso, Media_Disciplina, median, na.rm = TRUE))
+ggplot(alunos_ufcg, aes(x = turnos_por_mediana, y = Media_Disciplina, na.rm = TRUE)) + geom_boxplot() + 
+  labs(title = "Notas dos alunos em cursos de diferentes turnos", x = "Turnos", y = "Notas dos alunos")
+```
+
+Como é mostrado no gráfico, os cursos com turno diurno possuem as menores notas com relação aos demais turnos e dentre os cursos de único turno (manhã ou tarde ou noite) o turno noturno apresenta as menores notas.
 
