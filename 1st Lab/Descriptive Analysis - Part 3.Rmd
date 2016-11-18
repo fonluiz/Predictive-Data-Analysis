@@ -23,22 +23,24 @@ Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
 ```{r}
 # library(dplyr)
 # library(ggplot2)
+# library(scales)
+# library(reshape2)
 
 alunos_ufcg <- read.csv("../data/alunosUFCGAnon.csv")
 ```
 
 ## Atividade 1
-Perguntas:
-1) Para o curso de Ciência da Computação do campus 1, de uma forma geral, as notas aumentam ou diminuem ao longo do curso?
-2) Como estão distribuídas as notas dos alunos nos diferentes turnos: matutino, vespertino, diurno e noturno?
-3)É grande (ou pequena) a porcentagem de alunos que trancou ou reprovou uma disciplina optativa e depois voltou a se matricular na mesma disciplina? Em qual curso isso mais ocorre?
+### Perguntas
+1. Para o curso de Ciência da Computação do campus 1, de uma forma geral, as notas aumentam ou diminuem ao longo do curso?
+2. Como estão distribuídas as notas dos alunos nos diferentes turnos: matutino, vespertino, diurno e noturno?
+3. É grande (ou pequena) a porcentagem de alunos que trancou ou reprovou uma disciplina optativa e depois voltou a se matricular na mesma disciplina? Em qual curso isso mais ocorre?
 
-Respostas antes da análise:
-1) Eu acho que as notas aumentam ao longo do curso por alguns motivos. O primeiro é que no começo do curso geralmente os estudantes estão desacostumados com o ritmo de estudo do Ensino Superior, que é mais desgastante do que o ritmo do Ensino Médio. O segundo motivo é que conforme os alunos vão avançando no curso, acho que o sentimento de competitividade vai aumentando e faz os alunos se esforçarem mais. Outro motivo que acho é que conforme os alunos vão se engajando no mundo da computação, as disciplinas se tornam mais interessantes e mais fáceis de aprender, até porque depois de um tempo o aluno já deve ter aprendido tecnologias que o auxiliarão nas disciplinas mais adiante.
+### Respostas antes da análise
+1. Eu acho que as notas aumentam ao longo do curso por alguns motivos. O primeiro é que no começo do curso geralmente os estudantes estão desacostumados com o ritmo de estudo do Ensino Superior, que é mais desgastante do que o ritmo do Ensino Médio. O segundo motivo é que conforme os alunos vão avançando no curso, acho que o sentimento de competitividade vai aumentando e faz os alunos se esforçarem mais. Outro motivo que acho é que conforme os alunos vão se engajando no mundo da computação, as disciplinas se tornam mais interessantes e mais fáceis de aprender, até porque depois de um tempo o aluno já deve ter aprendido tecnologias que o auxiliarão nas disciplinas mais adiante.
 
-2) Acho que os cursos de um único turno podem possuir notas mais altas do que os cursos diurnos (manhã e tarde) e dentre os cursos de único turno, acho que o da noite deve possuir notas mais baixas. Eu considero que os cursos que ocorrem em dois turnos são mais difíceis e mais estressantes, além de que o estudante terá menos tempo para estudar em casa e fazer atividades lúdicas para desestressar. Acho que o turno da noite possui notas mais baixas em comparação com os outros turnos únicos porque é um período mais cansativo, por ser no final do dia.
+2. Acho que os cursos de um único turno podem possuir notas mais altas do que os cursos diurnos (manhã e tarde) e dentre os cursos de único turno, acho que o da noite deve possuir notas mais baixas. Eu considero que os cursos que ocorrem em dois turnos são mais difíceis e mais estressantes, além de que o estudante terá menos tempo para estudar em casa e fazer atividades lúdicas para desestressar. Acho que o turno da noite possui notas mais baixas em comparação com os outros turnos únicos porque é um período mais cansativo, por ser no final do dia.
 
-3) Eu acho que essa porcentagem deva ser menor que 50%. Isso porque se um aluno se der mal em uma disciplina que não é obrigatória, provavelmente, ele não irá querer cursá-la novamente por conta da sua experiência anterior ruim.
+3. Eu acho que essa porcentagem deva ser menor que 50%. Isso porque se um aluno se der mal em uma disciplina que não é obrigatória, provavelmente, ele não irá querer cursá-la novamente por conta da sua experiência anterior ruim.
 
 ## Atividade 2
 
@@ -57,7 +59,7 @@ media_alunos_por_periodo <- alunos_computacao %>%
   mutate(Total_Periodos = max(Periodo_Relativo)) %>%
   filter(Total_Periodos >= 8 & Total_Periodos <= 16) %>%
   group_by(Matricula, Periodo_Relativo) %>%
-  summarise(Media_Periodo = round(mean(Media_Disciplina, na.rm = TRUE), 2)) %>%
+  summarise(Media_Periodo = round(weighted.mean(Media_Disciplina, Creditos, na.rm = TRUE), 2)) %>%
   arrange(Matricula, Periodo_Relativo) %>%
   ungroup() %>% 
   group_by(Matricula) %>%
@@ -95,10 +97,34 @@ ggplot(evolucao_melted,aes(x = as.factor(periodo), y = value,fill = variable)) +
 
 A partir do gráfico podemos perceber que a diferença entre as porcentagens não é gritante e então não podemos afirmar que a média aumenta ou diminui com o decorrer do curso.
 
+Outra forma de responder essa pergunta seria verificar para cada aluno se sua média geral (CRA) no final do curso é maior ou menor que a média no primeiro período. Considerando que a média de um aluno só aumentou ou diminiu se ela variou pelo menos 0,2 ponto, que seria um valor razoável, obtemos resultados bem interessantes.
+
+```{r}
+media_final_alunos <- media_alunos_por_periodo %>%
+  group_by(Matricula) %>%
+  summarise(Media_Total_Final = mean(Media_Periodo), 
+            Media_primeiro_periodo = head(Media_Periodo, 1)) %>%
+  mutate(Evolucao_Curso = ifelse(Media_primeiro_periodo - Media_Total_Final >= 2,
+                                 "diminuiu",
+                                 ifelse(Media_primeiro_periodo - Media_Total_Final <= -2, 
+                                        "aumentou",
+                                        "igual")))
+
+avaliacao_geral_alunos <- as.data.frame(table(media_final_alunos$Evolucao_Curso))
+
+ggplot(avaliacao_geral_alunos, aes(x = Var1, y = Freq)) + 
+  geom_bar(stat="identity", fill="#56B4E9", colour="black") +
+  labs(x = "Status da média do aluno", y = "Quantidade de alunos")
+```
+
+Então, considerando uma diferença mínima de dois decimos para avaliar se a média de um aluno aumentou ou diminuiu quando comparamos a média do primeiro período com a do curso todo, vemos que para a maioria dos alunos, a média permanece igual. Então poderíamos inferir que de uma maneira geral, o desempenho dos alunos permanece o mesmo ao longo do curso, salvo algumas exceções.
+
 #### Pergunta 2
 <b> Como estão distribuídas as notas dos alunos nos diferentes turnos: matutino, vespertino, diurno e noturno? </b>
 
-```{r}
+Para responder essa pergunta, utilizarei um boxplot para cada turno para termos uma noção da distribuição das notas por turno.
+
+```{r, warning=FALSE, message=FALSE}
 get_turno <- function(nome_curso) {
   turno <- substring(nome_curso, nchar(nome_curso))
   return(
@@ -111,11 +137,11 @@ get_turno <- function(nome_curso) {
 alunos_ufcg$Turno_Curso = get_turno(as.character(alunos_ufcg$Nome_Curso))
 ```
 
-``` {r,  echo=FALSE}
+``` {r,  echo=FALSE, warning=FALSE, message=FALSE}
 turnos_por_mediana <- with(alunos_ufcg, reorder(Turno_Curso, Media_Disciplina, median, na.rm = TRUE))
-ggplot(alunos_ufcg, aes(x = turnos_por_mediana, y = Media_Disciplina, na.rm = TRUE)) + geom_boxplot() + 
+ggplot(alunos_ufcg, aes(x = turnos_por_mediana, y = Media_Disciplina, na.rm = TRUE)) + geom_boxplot(fill="#009E73", colour="black") +
   labs(title = "Notas dos alunos em cursos de diferentes turnos", x = "Turnos", y = "Notas dos alunos")
 ```
 
-Como é mostrado no gráfico, os cursos com turno diurno possuem as menores notas com relação aos demais turnos e dentre os cursos de único turno (manhã ou tarde ou noite) o turno noturno apresenta as menores notas.
+Como é mostrado no gráfico, os cursos com turno diurno possuem a menor mediana e o menor 1º quartil com relação aos demais turnos e dentre os cursos de único turno (manhã ou tarde ou noite) o turno noturno é o que apresenta a menor mediana e o menor primeiro quartil, isto é, as menores notas. Algumas hipóteses que poderiam explicar isto foram respondidas na Atividade 1.
 
