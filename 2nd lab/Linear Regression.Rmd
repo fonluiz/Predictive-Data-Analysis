@@ -1,0 +1,73 @@
+---
+title: "Lab 2 - Parte 2: Regressão linear para explicar desempenho acadêmico"
+author: "Luiz Fonseca"
+date: "26 de novembro de 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+```
+
+Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
+
+```{r}
+# library(dplyr)
+# library(ggplot2)
+# library(reshape2)
+
+# setwd("/home/luiz/Faculdade/Predictive-Data-Analysis/2nd lab/")
+alunos.graduados <- read.csv("../data/graduados.csv")
+```
+
+# Entendendo o problema e os dados
+
+Os dados são sobre alunos graduados do curso de Ciência da Computação da Universidade Federal de Campina Grande. Cada linha representa o desempenho de um aluno em uma determinada disciplina. A tarefa é verificar se é possível prever, utilizando regressão linear múltipla, o desempenho final do aluno no curso a partir de seu desempenho nos dois primeiros semestres do curso.
+
+# Tratando os dados
+
+```{r}
+# Retira os valores NA das médias
+alunos.graduados <- alunos.graduados %>% 
+  arrange(matricula) %>%
+  filter(!is.na(media))
+
+# Calcula o CRA de cada aluno
+graduados.cra <- alunos.graduados %>%
+  group_by(matricula) %>%
+  mutate(cra.contrb = media*creditos) %>%
+  summarise(cra = round(sum(cra.contrb)/sum(creditos), 2))
+
+disciplinas.iniciais <- c(
+  "Cálculo Diferencial e Integral I",
+  "Álgebra Vetorial e Geometria Analítica",
+  "Leitura e Produção de Textos",
+  "Programação I",
+  "Introdução à Computação",
+  "Laboratório de Programação I",
+  "Cálculo Diferencial e Integral II",
+  "Matemática Discreta",
+  "Programação II",
+  "Teoria dos Grafos",
+  "Fundamentos de Física Clássica",
+  "Laboratório de Programação"
+  )
+
+# Transforma o dataframe em um formato ideal para ser utilizado como entrada do modelo
+graduados.model.input <- alunos.graduados %>%
+  filter(disciplina %in% disciplinas.iniciais) %>%
+  group_by(matricula,disciplina)  %>%
+  filter(media == max(media)) %>%
+  ungroup() %>%
+  select(matricula,disciplina,media) %>% 
+  mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
+  dcast(matricula ~ disciplina, mean) %>%
+  merge(graduados.cra)
+```
+
+## Questionamento 1
+<b> Um modelo de regressão múltipla com todas as variáveis é plausível para explicar a variação em y? Em que grau? </b>
