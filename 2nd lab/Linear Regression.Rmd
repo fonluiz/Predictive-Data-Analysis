@@ -75,7 +75,6 @@ graduados.model.input <- alunos.graduados %>%
 <ol>
 <li> <b> Um modelo de regressão múltipla com todas as variáveis é plausível para explicar a variação em y? Em que grau? </b> </li>
 
-
 ```{r}
 cra.model.fit <- lm(formula = cra ~ . -matricula, graduados.model.input, na.action = na.omit)
 summary(cra.model.fit)
@@ -83,25 +82,31 @@ summary(cra.model.fit)
 
 Vamos analisar cada coeficiente e estatística do modelo para termos uma noção geral. A estatística F nos dá uma ideia sobre o teste de hipóteses feito para verificar se pelo menos um dos coeficientes das variáveis preditoras é diferente de 0, isto é, se há pelo menos uma variável preditora que está relacionada com o a variável que se quer prevê, para este caso, o cra. Como o valor da estatística F é maior que 1 e o tamanho da amostra (n = 105) é consideravelmente maior que o número de preditores (p = 12), podemos inferir que há sim uma relação entre pelo menos uma das variáveis de entrada e a variável alvo. Isso também pode ser verificado olhando os coeficientes das variáveis de entrada, que são todos diferentes de 0.
 
-Tendo verificado que as variáveis de entrada estão relacionadas com a variável alvo, agora podemos olhar para o coeficiente chamado r² ajustado. Analisando esse valor, podemos concluir que um modelo utilizando todas as variáveis talvez não seja o melhor modelo possível. O R² ajustado, que mede o quão bem o modelo explica a variabilidade dos dados com relação a média da variável observada, é cerca de 0.6473 e isso significa que o modelo consegue exlicar a maior parte dos dados mas não ainda uma quantidade satisfatória.  
+Tendo verificado que as variáveis de entrada estão relacionadas com a variável alvo, agora podemos olhar para os p-valores de cada variável preditora. O p valor é uma probabilidade que nos fornece evidências para a hipótese nula. Um p-valor menor que 0,05 é considerado bom e indica que há fortes evidências de que a variávelse encaixa para o modelo. Um pvalor maior que 0,05 é considerado alto e indica que talvez a variável não se adeque ao modelo.
+
+No modelo gerado com todas as variáveis, a maioria dos p-valores das variáveis está acima do treshold, que é 0,05, isso indica que talvez seja necessário retirar algumas variáveis que não fazem sentido para o modelo de regressão.
+
+Um coeficiente que merece destaque é o r² ajustado. Para o modelo gerado, o R² ajustado, que mede o quão bem o modelo explica a variabilidade dos dados com relação a média da variável observada, é cerca de 0.6473 e isso significa que o modelo consegue exlicar a maior parte dos dados. Talvez esse valor não seja adequado para realizar uma predição, mas como há muita incosistência nos dados e o objetivo aqui não é realizar a predição com uma acurácia alta, o valor já está satisfatório.
 
 <li><b>Todas as variáveis são úteis para o modelo de regressão?</b></li>
 
-Para responder essa pergunta, iremos executar a tarefa conhecida como <i> seleção de variáveis </i>, que consiste em diagnosticar quais preditores estão associados com a resposta e quais podem ser descartados. Existem vários métodos de seleção de váriáveis: forward selection, backward selection, mixed selection, busca exaustiva, entre outros. Utilizarei o pacote leaps, que fornece métodos para executar vários tipos de seleção.
+Para responder essa pergunta, iremos executar a tarefa conhecida como <i> seleção de variáveis </i>, que consiste em diagnosticar quais preditores estão associados com a resposta e quais podem ser descartados. Existem vários algoritmos de seleção de váriáveis: forward selection, backward selection, mixed selection, busca exaustiva, entre outros. Utilizarei o pacote leaps, que fornece métodos para executar vários tipos de seleção. O método utilizada é a busca exaustiva (exhaustive search), que irá procurar o melhor modelo dentre todos os possíveis.
 
 ```{r}
+# library(leaps)
 regsubsets.out <-
     regsubsets(cra ~ . -matricula,
                data = graduados.model.input,
                nbest = 1,       # 1 único modelo para cada cojunto de preditores
-               nvmax = NULL,    # NULL para não haver limite no número de variáveis
+               nvmax = NULL,    # NULL para não haver limite no número de variáveis preditoras
                force.in = NULL, force.out = NULL,
                method = "exhaustive")
 
 summary.out <- summary(regsubsets.out)
+summary.out
 ```
 
-Quando executamos summary(regsubsets.out), nos é mostrado o melhor modelo para cada tamanho de subconjunto de variáveis. Nos resta saber qual desses doze conjuntos de variáveis representa o melhor modelo.
+Quando executamos summary(regsubsets.out), nos é mostrado o melhor modelo para cada tamanho de subconjunto de variáveis. Para este caso, a saído nos mostrará o melhor modelo utilizando apenas uma variável, o melhor modelo utilizando 2 variáveis e assim continua até todas as doze variáveis. O melhor modelo é definido em termos de maior R² ajustado e p-valores satisfatórios para as variáveis preditoras. Nos resta saber qual desses doze modelos representa o melhor modelo.
 
 ```{r}
 # Qual dos doze modelos contém o melhor r² ajustado
@@ -112,6 +117,7 @@ which.max(summary.out$adjr2)
 summary.out$which[6,]
 ```
 
+Então descobrimos que o melhor modelo é aquele que contem apenas seis variáveis preditoras. Então, a partir destas seis variáveis, definiremos um novo modelo. 
 ```{r}
 graduados.best.input <- graduados.model.input %>%
   dplyr::select(Álgebra.Vetorial.e.Geometria.Analítica, Introdução.à.Computação,
