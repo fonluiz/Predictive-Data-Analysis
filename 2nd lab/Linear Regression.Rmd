@@ -26,11 +26,11 @@ Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
 alunos.graduados <- read.csv("../data/graduados.csv")
 ```
 
-# Entendendo o problema e os dados
+## Entendendo o problema e os dados
 
 Os dados são sobre alunos graduados do curso de Ciência da Computação da Universidade Federal de Campina Grande. Cada linha representa o desempenho de um aluno em uma determinada disciplina. A tarefa é verificar se é possível prever, utilizando regressão linear múltipla, o desempenho final do aluno no curso a partir de seu desempenho nos dois primeiros semestres do curso.
 
-# Tratando os dados
+## Tratando os dados
 
 ```{r}
 # Retira os valores NA das médias
@@ -106,25 +106,37 @@ summary.out <- summary(regsubsets.out)
 summary.out
 ```
 
-Quando executamos summary(regsubsets.out), nos é mostrado o melhor modelo para cada tamanho de subconjunto de variáveis. Para este caso, a saído nos mostrará o melhor modelo utilizando apenas uma variável, o melhor modelo utilizando 2 variáveis e assim continua até todas as doze variáveis. O melhor modelo é definido em termos de maior R² ajustado e p-valores satisfatórios para as variáveis preditoras. Nos resta saber qual desses doze modelos representa o melhor modelo.
+Quando executamos summary(regsubsets.out), nos é mostrado o melhor modelo para cada tamanho de subconjunto de variáveis. Para este caso, a saída nos mostrará o melhor modelo utilizando apenas uma variável, o melhor modelo utilizando 2 variáveis e assim continua até todas as doze variáveis. O melhor modelo é definido em termos de maior R² ajustado e p-valores satisfatórios para as variáveis preditoras. Nos resta saber qual desses doze modelos representa o melhor modelo.
 
 ```{r}
 # Qual dos doze modelos contém o melhor r² ajustado
 which.max(summary.out$adjr2)
-# [1] 6
-
 # Quais variáveis estão presentes nesse modelo
 summary.out$which[6,]
 ```
 
-Então descobrimos que o melhor modelo é aquele que contem apenas seis variáveis preditoras. Então, a partir destas seis variáveis, definiremos um novo modelo. 
+Com isso descobrimos que o melhor modelo é aquele que contem apenas seis variáveis preditoras. Então, a partir destas seis variáveis, definiremos um novo modelo. 
+
 ```{r}
 graduados.best.input <- graduados.model.input %>%
-  dplyr::select(Álgebra.Vetorial.e.Geometria.Analítica, Introdução.à.Computação,
-                 Leitura.e.Produção.de.Textos, Matemática.Discreta, Programação.II,
-                 Teoria.dos.Grafos )
-cra.model.fit <- lm(formula = cra ~ . -matricula, graduados.model.input, na.action = na.omit)
-summary(cra.model.fit)
+  dplyr::select(
+    Álgebra.Vetorial.e.Geometria.Analítica, Introdução.à.Computação,
+    Leitura.e.Produção.de.Textos, Matemática.Discreta, Programação.II,
+    Teoria.dos.Grafos, cra, matricula
+  )
+
+cra.best.fit <- lm(formula = cra ~ . -matricula, graduados.best.input)
+summary(cra.best.fit)
 ```
 
+<li><b> Se a resposta para a pergunta anterior foi não, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE). </b> </li>
+
+Agora vamos comparar os dois modelos encontrados: o modelo com todas as variáveis e o modelo com seis variáveis apenas.
+```{r}
+p.values.first.model <- summary(cra.model.fit)$coefficients[,4]
+p.values.best.model <- summary(cra.best.fit)$coefficients[,4]
+
+adjr2.first.model <- summary(cra.model.fit)$adj.r.squared
+adjr2.best.model <- summary(cra.best.fit)$adj.r.squared
+```
 
