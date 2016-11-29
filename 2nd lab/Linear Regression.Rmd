@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(ggplot2)
 library(reshape2)
+library(car)
+library(leaps)
 ```
 
 Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
@@ -69,11 +71,54 @@ graduados.model.input <- alunos.graduados %>%
   merge(graduados.cra)
 ```
 
-## Questionamento 1
-<b> Um modelo de regressão múltipla com todas as variáveis é plausível para explicar a variação em y? Em que grau? </b>
+## Questionamentos
+<ol>
+<li> <b> Um modelo de regressão múltipla com todas as variáveis é plausível para explicar a variação em y? Em que grau? </b> </li>
+
 
 ```{r}
 cra.model.fit <- lm(formula = cra ~ . -matricula, graduados.model.input, na.action = na.omit)
 summary(cra.model.fit)
 ```
+
+Vamos analisar cada coeficiente e estatística do modelo para termos uma noção geral. A estatística F nos dá uma ideia sobre o teste de hipóteses feito para verificar se pelo menos um dos coeficientes das variáveis preditoras é diferente de 0, isto é, se há pelo menos uma variável preditora que está relacionada com o a variável que se quer prevê, para este caso, o cra. Como o valor da estatística F é maior que 1 e o tamanho da amostra (n = 105) é consideravelmente maior que o número de preditores (p = 12), podemos inferir que há sim uma relação entre pelo menos uma das variáveis de entrada e a variável alvo. Isso também pode ser verificado olhando os coeficientes das variáveis de entrada, que são todos diferentes de 0.
+
+Tendo verificado que as variáveis de entrada estão relacionadas com a variável alvo, agora podemos olhar para o coeficiente chamado r² ajustado. Analisando esse valor, podemos concluir que um modelo utilizando todas as variáveis talvez não seja o melhor modelo possível. O R² ajustado, que mede o quão bem o modelo explica a variabilidade dos dados com relação a média da variável observada, é cerca de 0.6473 e isso significa que o modelo consegue exlicar a maior parte dos dados mas não ainda uma quantidade satisfatória.  
+
+<li><b>Todas as variáveis são úteis para o modelo de regressão?</b></li>
+
+Para responder essa pergunta, iremos executar a tarefa conhecida como <i> seleção de variáveis </i>, que consiste em diagnosticar quais preditores estão associados com a resposta e quais podem ser descartados. Existem vários métodos de seleção de váriáveis: forward selection, backward selection, mixed selection, busca exaustiva, entre outros. Utilizarei o pacote leaps, que fornece métodos para executar vários tipos de seleção.
+
+```{r}
+regsubsets.out <-
+    regsubsets(cra ~ . -matricula,
+               data = graduados.model.input,
+               nbest = 1,       # 1 único modelo para cada cojunto de preditores
+               nvmax = NULL,    # NULL para não haver limite no número de variáveis
+               force.in = NULL, force.out = NULL,
+               method = "exhaustive")
+
+summary.out <- summary(regsubsets.out)
+```
+
+Quando executamos summary(regsubsets.out), nos é mostrado o melhor modelo para cada tamanho de subconjunto de variáveis. Nos resta saber qual desses doze conjuntos de variáveis representa o melhor modelo.
+
+```{r}
+# Qual dos doze modelos contém o melhor r² ajustado
+which.max(summary.out$adjr2)
+# [1] 6
+
+# Quais variáveis estão presentes nesse modelo
+summary.out$which[6,]
+```
+
+```{r}
+graduados.best.input <- graduados.model.input %>%
+  dplyr::select(Álgebra.Vetorial.e.Geometria.Analítica, Introdução.à.Computação,
+                 Leitura.e.Produção.de.Textos, Matemática.Discreta, Programação.II,
+                 Teoria.dos.Grafos )
+cra.model.fit <- lm(formula = cra ~ . -matricula, graduados.model.input, na.action = na.omit)
+summary(cra.model.fit)
+```
+
 
