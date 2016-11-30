@@ -8,31 +8,30 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+setwd("/home/luiz/Faculdade/Predictive-Data-Analysis/2nd lab/")
+```
+
+Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
+
+```{r, results='hide', message=FALSE, warning=FALSE}
 library(dplyr)
 library(ggplot2)
 library(reshape2)
 library(car)
 library(leaps)
-```
 
-Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
-
-```{r}
-# library(dplyr)
-# library(ggplot2)
-# library(reshape2)
-
-# setwd("/home/luiz/Faculdade/Predictive-Data-Analysis/2nd lab/")
 alunos.graduados <- read.csv("../data/graduados.csv")
 ```
 
 ## Entendendo o problema e os dados
 
-Os dados são sobre alunos graduados do curso de Ciência da Computação da Universidade Federal de Campina Grande. Cada linha representa o desempenho de um aluno em uma determinada disciplina. A tarefa é verificar se é possível prever, utilizando regressão linear múltipla, o desempenho final do aluno no curso a partir de seu desempenho nos dois primeiros semestres do curso.
+Os dados são sobre alunos graduados do curso de Ciência da Computação da Universidade Federal de Campina Grande. Cada linha do data frame alunos.graduados representa o desempenho de um aluno em uma determinada disciplina. A tarefa é verificar se é possível prever, utilizando regressão linear múltipla, o desempenho final do aluno no curso (variável cra) a partir de seu desempenho nos dois primeiros semestres do curso.
 
 ## Tratando os dados
 
-```{r}
+O arquivo original não está no formato ótimo para usármo-lo como entrada da função que gera um modelo linear. Abaixo, encontra-se o passo a passo para derivarmos um dataframe que podemos utilizar como entrada da função.
+
+```{r, message=FALSE}
 # Retira os valores NA das médias
 alunos.graduados <- alunos.graduados %>% 
   arrange(matricula) %>%
@@ -131,12 +130,29 @@ summary(cra.best.fit)
 
 <li><b> Se a resposta para a pergunta anterior foi não, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE). </b> </li>
 
-Agora vamos comparar os dois modelos encontrados: o modelo com todas as variáveis e o modelo com seis variáveis apenas.
-```{r}
-p.values.first.model <- summary(cra.model.fit)$coefficients[,4]
-p.values.best.model <- summary(cra.best.fit)$coefficients[,4]
+Agora vamos comparar os dois modelos encontrados: o modelo com todas as variáveis e o modelo com seis variáveis apenas. O primeiro modelo possui o maior r² ajustado, 0.6473 contra 0.6075, do segundo modelo. O primeiro modelo possui um RSE menor do que o segundo, 0.5046 contra 0.526. 
 
-adjr2.first.model <- summary(cra.model.fit)$adj.r.squared
-adjr2.best.model <- summary(cra.best.fit)$adj.r.squared
+O r² é o quadrado da correlação entre a variável de resposta e o modelo linear ajustado - Cor(Y, Ŷ )² -  e mede a fração de variância explicada. Poderíamos pensar que o primeiro modelo é melhor porque seu r² é maior e, portanto, ele explicaria melhor a variabilidade dos dados, mas isso não é verdade. Acontece que o r² irá sempre aumentar ao incluir novas variáveis no modelo, mesmo aquelas que estão fracamente associadas com a variável de resposta, ou seja, possuem p-valor alto. Isso se deve ao fato de que adicionar uma variável às equações de mínimos quadrados nos permitirá ajustar os dados de treino (embora não necessariamente os dados de teste) mais acuradamente. Podemos perceber que a diferença do r² ajustado é muito pequeno de um modelo para o outro (apenas 0.0398), o que nos fornece evidências adicionais de que as seis variáveis retiradas do modelo não são boas preditoras.
+
+O RSE é o <i>erro padrão dos desvios</i> ou <i>erro padrão da regressão</i>. Quanto menor o RSE, melhor é a previsão dada pelo modelo. Apesar do RSE do segundo modelo ser melhor do que o RSE do primeiro, devemos observar também os graus de liberdade, que para o segundo modelo são 285 e para o primeiro são 90. Então, a pequena diferença entre os RSEs dos modelos pode ser relevada considerando o aumento de 4 vezes mais graus de liberdade.
+
+Também poderíamos comparar os p-valores das variáveis preditoras em ambos os modelos. Assumindo que um p-valor satisfatório é menor que 0.05, verificamos que das doze variáveis preditoras utilizadas no modelo 1, apenas 2 possuem um p-valor aceitável. Em contrapartida, todas as seis variáveis do modelo 2 possuem p-valores muito abaixo do treshold. Isso nos diz que no segundo modelo, todas as variáveis estão altamente relacionadas com a variável resposta, ao contrário do primeiro.
+
+<li><b> Analise os plots de resíduos de cada variável e veja se algum (um ou mais) deles indica não aleatoriedade dos erros. </li></b>
+
+Abaixo, apresentamos scatter plots dos resíduos para cada variável preditora.
+
+```{r, fig.width=9, fig.height=6, echo=FALSE}
+graduados.model.input <- na.omit(graduados.model.input)
+graduados.model.input$residuals <- residuals(cra.model.fit)
+
+variable.names <- c(names(graduados.model.input)[2:13], "residuals")
+plotDF <- melt(graduados.model.input[, variable.names], id="residuals")
+
+ggplot(plotDF, aes(x=value, y=residuals)) + 
+  geom_point(color="slateblue") + facet_wrap(~ variable)
 ```
 
+Analisando os plots dos resíduos de cada variável, identifica-se aleatoriedade em todos os gráficos e uma simetria dos pontos em torno do valor 0. Então, concluímos que nenhuma variável tende a superestimar ou subestimar a variável de resposta.
+
+<li><b> Que período consegue explicar melhor o desempenho final (primeiro ou segundo)? </li></b>
