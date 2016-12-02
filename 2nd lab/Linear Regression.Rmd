@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-setwd("/home/luiz/Faculdade/Predictive-Data-Analysis/2nd lab/")
+# setwd("/home/luiz/Faculdade/Predictive-Data-Analysis/2nd lab/")
 ```
 
 Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
@@ -134,7 +134,7 @@ Agora vamos comparar os dois modelos encontrados: o modelo com todas as variáve
 
 O r² é o quadrado da correlação entre a variável de resposta e o modelo linear ajustado - Cor(Y, Ŷ )² -  e mede a fração de variância explicada. Poderíamos pensar que o primeiro modelo é melhor porque seu r² é maior e, portanto, ele explicaria melhor a variabilidade dos dados, mas isso não é verdade. Acontece que o r² irá sempre aumentar ao incluir novas variáveis no modelo, mesmo aquelas que estão fracamente associadas com a variável de resposta, ou seja, possuem p-valor alto. Isso se deve ao fato de que adicionar uma variável às equações de mínimos quadrados nos permitirá ajustar os dados de treino (embora não necessariamente os dados de teste) mais acuradamente. Podemos perceber que a diferença do r² ajustado é muito pequeno de um modelo para o outro (apenas 0.0398), o que nos fornece evidências adicionais de que as seis variáveis retiradas do modelo não são boas preditoras.
 
-O RSE é o <i>erro padrão dos desvios</i> ou <i>erro padrão da regressão</i>. Quanto menor o RSE, melhor é a previsão dada pelo modelo. Apesar do RSE do segundo modelo ser melhor do que o RSE do primeiro, devemos observar também os graus de liberdade, que para o segundo modelo são 285 e para o primeiro são 90. Então, a pequena diferença entre os RSEs dos modelos pode ser relevada considerando o aumento de 4 vezes mais graus de liberdade.
+O RSE é o <i>erro padrão dos desvios</i> ou <i>erro padrão da regressão</i>. Quanto menor o RSE, melhor é a previsão dada pelo modelo. Apesar do RSE do segundo modelo ser maior do que o RSE do primeiro, devemos observar também os graus de liberdade, que para o segundo modelo são 285 e para o primeiro são 90. Então, a pequena diferença entre os RSEs dos modelos pode ser relevada considerando o aumento de 4 vezes mais graus de liberdade.
 
 Também poderíamos comparar os p-valores das variáveis preditoras em ambos os modelos. Assumindo que um p-valor satisfatório é menor que 0.05, verificamos que das doze variáveis preditoras utilizadas no modelo 1, apenas 2 possuem um p-valor aceitável. Em contrapartida, todas as seis variáveis do modelo 2 possuem p-valores muito abaixo do treshold. Isso nos diz que no segundo modelo, todas as variáveis estão altamente relacionadas com a variável resposta, ao contrário do primeiro.
 
@@ -156,3 +156,18 @@ ggplot(plotDF, aes(x=value, y=residuals)) +
 Analisando os plots dos resíduos de cada variável, identifica-se aleatoriedade em todos os gráficos e uma simetria dos pontos em torno do valor 0. Então, concluímos que nenhuma variável tende a superestimar ou subestimar a variável de resposta.
 
 <li><b> Que período consegue explicar melhor o desempenho final (primeiro ou segundo)? </li></b>
+
+Para responder essa questão, farei um modelo otimizado para cada período, utilizando somente as disciplinas boas preditoras e depois irei comparar os modelos.
+
+```{r}
+model.input.semester.1 <- graduados.model.input %>%
+  select(cra, matricula, Álgebra.Vetorial.e.Geometria.Analítica, Cálculo.Diferencial.e.Integral.I,
+         Introdução.à.Computação, Laboratório.de.Programação.I, Programação.I, Leitura.e.Produção.de.Textos)
+
+model.input.semester.2 <- graduados.model.input %>%
+  select(cra, matricula, Cálculo.Diferencial.e.Integral.II, Fundamentos.de.Física.Clássica,
+         Laboratório.de.Programação.II, Matemática.Discreta, Programação.II, Teoria.dos.Grafos)
+
+```
+
+
