@@ -1,0 +1,76 @@
+---
+title: 'Parte 3: Predição'
+author: "Luiz Fonseca"
+date: "7 de dezembro de 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# setwd("/home/luiz/Faculdade/Predictive-Data-Analysis/2nd lab/")
+```
+
+Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(dplyr)
+# library(ggplot2)
+# library(reshape2)
+# library(car)
+# library(leaps)
+
+students.train.data <- read_csv("data/graduados_treino.csv")
+students.test.data <- read_csv("data/graduados_teste.csv")
+```
+
+## Entendendo o problema e os dados
+
+O objetivo deste exercício é construir modelos preditivos de regressão para a predição do CRA baseados nas disciplinas do primeiro e segundo semestres. Os dados estão divididos em dados de treino e dados de teste. São dados dos alunos do Curso de Ciência da Computação da Universidade Federal de Campina Grande.
+
+## Preprocessamento dos dados
+```{r}
+# Retira os valores NA das médias
+students.train.data <- students.train.data %>% 
+  arrange(matricula) %>%
+  filter(!is.na(media))
+
+# Calcula o CRA de cada aluno
+graduados.cra <- alunos.graduados %>%
+  group_by(matricula) %>%
+  mutate(cra.contrb = media*creditos) %>%
+  summarise(cra = round(sum(cra.contrb)/sum(creditos), 2))
+
+disciplinas.iniciais <- c(
+  "Cálculo Diferencial e Integral I",
+  "Álgebra Vetorial e Geometria Analítica",
+  "Leitura e Produção de Textos",
+  "Programação I",
+  "Introdução à Computação",
+  "Laboratório de Programação I",
+  "Cálculo Diferencial e Integral II",
+  "Matemática Discreta",
+  "Programação II",
+  "Teoria dos Grafos",
+  "Fundamentos de Física Clássica",
+  "Laboratório de Programação II"
+  )
+
+# Transforma o dataframe em um formato ideal para ser utilizado como entrada do modelo
+graduados.model.input <- alunos.graduados %>%
+  filter(disciplina %in% disciplinas.iniciais) %>%
+  group_by(matricula,disciplina)  %>%
+  filter(media == max(media)) %>%
+  ungroup() %>%
+  select(matricula,disciplina,media) %>% 
+  mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
+  dcast(matricula ~ disciplina, mean) %>%
+  merge(graduados.cra)
+```
+
+
+## Atividades
+<ol>
+<li><b> <b></li>
+
+</ol>
