@@ -17,7 +17,7 @@ Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
 library(dplyr)
 library(ggplot2)
 library(reshape2)
-# library(car)
+library(caret)
 # library(leaps)
 
 students.train.data <- read.csv("data/graduados_treino.csv")
@@ -26,22 +26,23 @@ students.test.data <- read.csv("data/graduados_teste.csv")
 
 ## Entendendo o problema e os dados
 
-O objetivo deste exercício é construir modelos preditivos de regressão para a predição do CRA baseados nas disciplinas do primeiro e segundo semestres. Os dados estão divididos em dados de treino e dados de teste. São dados dos alunos do Curso de Ciência da Computação da Universidade Federal de Campina Grande.
+O objetivo deste exercício é construir modelos preditivos de regressão utilizando técnicas de regularização e seleção de variáveis para a predição do CRA baseados nas disciplinas do primeiro e segundo semestres. Os dados são sobre os alunos do Curso de Ciência da Computação da Universidade Federal de Campina Grande. Os dados fornecidos foram divididos em dados de treinos e de teste, entretanto, depois de algum processamento para ajustar os dados para servirem como entrada para o método de regularização, os dados de treino acabaram ficando com menos amostras do que os dados de teste. Por isso, eu decidi unir os dados, e depois do processamento, repartí-los novamente em daods de treino e de teste.
 
 ## Preprocessamento dos dados
 ```{r}
+# Une dados de treino e de teste
+alunos.dados.completos <- rbind(students.train.data, students.test.data)
+
 # Renomea as colunas
-names(students.train.data) <- c("matricula", "ano_formatura", "periodo_formatura",
-                                "cod_disciplina", "disciplina", "creditos", "media")
-names(students.test.data) <- c("matricula", "ano_formatura", "periodo_formatura",
+names(alunos.dados.completos) <- c("matricula", "ano_formatura", "periodo_formatura",
                                 "cod_disciplina", "disciplina", "creditos", "media")
 
 # Retira os valores NA das médias
-students.train.data <- students.train.data %>% 
+alunos.dados.completos <- alunos.dados.completos %>% 
   filter(!is.na(media))
 
 # Calcula o CRA de cada aluno
-students.cra <- students.train.data %>%
+alunos.cra <- alunos.dados.completos %>%
   group_by(matricula) %>%
   mutate(cra.contrb = media*creditos) %>%
   summarise(cra = round(sum(cra.contrb)/sum(creditos), 2))
@@ -62,7 +63,7 @@ disciplinas.iniciais <- c(
   )
 
 # Transforma o dataframe em um formato ideal para ser utilizado como entrada do modelo
-graduados.dados.treino <- students.train.data %>%
+alunos.dados.completos <- alunos.dados.completos %>%
   filter(disciplina %in% disciplinas.iniciais) %>%
   group_by(matricula,disciplina)  %>%
   filter(media == max(media)) %>%
@@ -70,13 +71,29 @@ graduados.dados.treino <- students.train.data %>%
   select(matricula,disciplina,media) %>% 
   mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
   dcast(matricula ~ disciplina, mean) %>%
-  merge(students.cra)
+  merge(alunos.cra)
 
-names(graduados.dados.treino)[2:13] <-sort(disciplinas.iniciais) 
+# names(graduados.dados.treino)[2:13] <-sort(disciplinas.iniciais) 
+
 ```
 
 ## Atividades
 <ol>
 <li><b>Usando todas as variáveis disponíveis (disciplinas do primeiro e segundo período), use validação cruzada (nos dados de treino) para tunar um modelo de regressão Ridge. <b></li>
+
+```{r}
+fitControl <- trainControl(method = "cv",
+                           number = 10)
+
+lambdaGrid <- expand.grid(lambda = 10^seq(10, -2, length=100))
+
+ridge.fit <- train(cra ~. -matricula,
+                   data = graduados.dados.treino,
+                   trControl = fitControl,
+                   method='ridge',
+                   tuneGrid = lambdaGrid,
+                   preProcess=c('scale', 'center'),
+                   na.action = na.omit)
+```
 
 </ol>
