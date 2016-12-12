@@ -15,13 +15,13 @@ Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
 
 ```{r, results='hide', message=FALSE, warning=FALSE}
 library(dplyr)
-# library(ggplot2)
-# library(reshape2)
+library(ggplot2)
+library(reshape2)
 # library(car)
 # library(leaps)
 
-students.train.data <- read_csv("data/graduados_treino.csv")
-students.test.data <- read_csv("data/graduados_teste.csv")
+students.train.data <- read.csv("data/graduados_treino.csv")
+students.test.data <- read.csv("data/graduados_teste.csv")
 ```
 
 ## Entendendo o problema e os dados
@@ -30,13 +30,18 @@ O objetivo deste exercício é construir modelos preditivos de regressão para a
 
 ## Preprocessamento dos dados
 ```{r}
+# Renomea as colunas
+names(students.train.data) <- c("matricula", "ano_formatura", "periodo_formatura",
+                                "cod_disciplina", "disciplina", "creditos", "media")
+names(students.test.data) <- c("matricula", "ano_formatura", "periodo_formatura",
+                                "cod_disciplina", "disciplina", "creditos", "media")
+
 # Retira os valores NA das médias
 students.train.data <- students.train.data %>% 
-  arrange(matricula) %>%
   filter(!is.na(media))
 
 # Calcula o CRA de cada aluno
-graduados.cra <- alunos.graduados %>%
+students.cra <- students.train.data %>%
   group_by(matricula) %>%
   mutate(cra.contrb = media*creditos) %>%
   summarise(cra = round(sum(cra.contrb)/sum(creditos), 2))
@@ -57,7 +62,7 @@ disciplinas.iniciais <- c(
   )
 
 # Transforma o dataframe em um formato ideal para ser utilizado como entrada do modelo
-graduados.model.input <- alunos.graduados %>%
+graduados.dados.treino <- students.train.data %>%
   filter(disciplina %in% disciplinas.iniciais) %>%
   group_by(matricula,disciplina)  %>%
   filter(media == max(media)) %>%
@@ -65,12 +70,13 @@ graduados.model.input <- alunos.graduados %>%
   select(matricula,disciplina,media) %>% 
   mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
   dcast(matricula ~ disciplina, mean) %>%
-  merge(graduados.cra)
-```
+  merge(students.cra)
 
+names(graduados.dados.treino)[2:13] <-sort(disciplinas.iniciais) 
+```
 
 ## Atividades
 <ol>
-<li><b> <b></li>
+<li><b>Usando todas as variáveis disponíveis (disciplinas do primeiro e segundo período), use validação cruzada (nos dados de treino) para tunar um modelo de regressão Ridge. <b></li>
 
 </ol>

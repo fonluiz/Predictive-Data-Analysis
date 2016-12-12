@@ -4,7 +4,7 @@ author: "Luiz Fonseca"
 date: "26 de novembro de 2016"
 output: html_document
 ---
-
+<hr>
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -89,7 +89,7 @@ No modelo gerado com todas as variáveis, a maioria dos p-valores das variáveis
 
 Um coeficiente que merece destaque é o r² ajustado. Para o modelo gerado, o R² ajustado - que mede o quão bem o modelo explica a variabilidade dos dados com relação a média da variável observada - é cerca de 0.6473 e isso significa que o modelo consegue exlicar a maior parte dos dados. 
 Esse valor de r² ajustado é satisfatório para o propósito desta atividade. Porém, como os p-valores das variáveis de predição estão muito altos, devemos considerar a retirada de algumas variáveis do modelo, de forma que possamos encontrar um equilíbrio entre o r² ajustado e os p-valores. Então, um modelo com todas as variáveis talvez não seja o melhor possível.
-
+<hr>
 <li><b>Todas as variáveis são úteis para o modelo de regressão?</b></li>
 
 Para responder essa pergunta, iremos executar a tarefa conhecida como <i> seleção de variáveis </i>, que consiste em diagnosticar quais preditores estão associados com a resposta e quais podem ser descartados. Existem vários algoritmos de seleção de váriáveis: forward selection, backward selection, mixed selection, busca exaustiva, entre outros. Utilizarei o pacote leaps, que fornece métodos para executar vários tipos de seleção. O método que será utilizado é a busca exaustiva (exhaustive search), que irá procurar o melhor modelo dentre todos os possíveis.
@@ -129,7 +129,7 @@ graduados.best.input <- graduados.model.input %>%
 cra.best.fit <- lm(formula = cra ~ ., graduados.best.input)
 summary(cra.best.fit)
 ```
-
+<hr>
 <li><b> Se a resposta para a pergunta anterior foi não, construa um novo modelo sem essas variáveis e o compare ao modelo com todas as variáveis (e.g. em termos de R2 e RSE). </b> </li>
 
 Agora vamos comparar os dois modelos encontrados: o modelo com todas as variáveis e o modelo com seis variáveis apenas. O primeiro modelo possui maior r² ajustado, 0.6473 contra 0.6075, do segundo modelo. O primeiro modelo possui um RSE menor do que o segundo, 0.5046 contra 0.526. 
@@ -139,7 +139,7 @@ O r² é o quadrado da correlação entre a variável de resposta e o modelo lin
 O RSE é o <i>erro padrão dos desvios</i> ou <i>erro padrão da regressão</i>. Quanto menor o RSE, melhor é a previsão dada pelo modelo. Apesar do RSE do segundo modelo ser maior do que o RSE do primeiro, devemos observar também os graus de liberdade, que para o segundo modelo são 285 e para o primeiro são 90. Então, a pequena diferença entre os RSEs dos modelos pode ser relevada considerando o aumento de 4 vezes mais graus de liberdade.
 
 Também poderíamos comparar os p-valores das variáveis preditoras em ambos os modelos. Assumindo que um p-valor satisfatório é menor que 0.05, verificamos que das doze variáveis preditoras utilizadas no modelo 1, apenas 2 possuem um p-valor aceitável. Em contrapartida, todas as seis variáveis do modelo 2 possuem p-valores muito abaixo do limite. Isso nos diz que no segundo modelo, todas as variáveis estão altamente relacionadas com a variável resposta, ao contrário do primeiro.
-
+<hr>
 <li><b> Analise os plots de resíduos de cada variável e veja se algum (um ou mais) deles indica não aleatoriedade dos erros. </li></b>
 
 Abaixo, apresentamos os scatter plots dos resíduos para cada variável preditora.
@@ -156,7 +156,7 @@ ggplot(plotDF, aes(x=value, y=residuals)) +
 ```
 
 Analisando os plots dos resíduos de cada variável, identifica-se aleatoriedade em todos os gráficos e uma simetria dos pontos em torno do valor 0. Então, concluímos que nenhuma variável tende a superestimar ou subestimar a variável de resposta.
-
+<hr>
 <li><b> Que período consegue explicar melhor o desempenho final (primeiro ou segundo)? </li></b>
 
 Para responder essa questão, farei um modelo otimizado para cada período, utilizando somente as disciplinas boas preditoras e depois irei comparar os modelos. Mas primeiramente vamos fazer dois modelos com todas as suas respectivas variáveis preditoras.
@@ -235,7 +235,7 @@ ggplot(data.melted, aes(modelo, value)) +
 ```
 
 Dentre os três, o modelo para o segundo período é o que possui maior r² ajustado e menor RSE. Podemos presumir que ele seja o modelo que melhor prevê o CRA.
-
+<hr>
 <li><b> Use o melhor modelo encontrado para predizer o seu próprio desempenho e compare a predição com o seu CRA atual. Comente o resultado. </li></b>
 
 ```{r}
@@ -266,3 +266,6 @@ Como esta é uma atividade introdutória de regressão linear múltipla e ajuste
 ## Conclusão
 
 É possível prever o resultado final dos alunos com base nos dois primeiros semestres. Com apenas poucos melhoramentos, conseguimos ajustar um modelo que explica cerca de 65% da variabilidade dos dados. 
+
+<hr>
+<hr>
