@@ -26,7 +26,7 @@ students.test.data <- read.csv("data/graduados_teste.csv")
 
 ## Entendendo o problema e os dados
 
-O objetivo deste exercício é construir modelos preditivos de regressão utilizando técnicas de regularização e seleção de variáveis para a predição do CRA baseados nas disciplinas do primeiro e segundo semestres. Os dados são sobre os alunos do Curso de Ciência da Computação da Universidade Federal de Campina Grande. Os dados fornecidos foram divididos em dados de treinos e de teste, entretanto, depois de algum processamento para ajustar os dados para servirem como entrada para o método de regularização, os dados de treino acabaram ficando com menos amostras do que os dados de teste. Por isso, eu decidi unir os dados, e depois do processamento, repartí-los novamente em daods de treino e de teste.
+O objetivo deste exercício é construir modelos preditivos de regressão utilizando técnicas de regularização e seleção de variáveis para a predição do CRA baseados nas disciplinas do primeiro e segundo semestres. Os dados são sobre os alunos do Curso de Ciência da Computação da Universidade Federal de Campina Grande. Os dados fornecidos foram divididos em dados de treinos e de teste, entretanto, depois de algum processamento para ajustar os dados para servirem como entrada para o método de regularização, os dados de treino acabaram ficando com menos amostras do que os dados de teste. Por essa razão, eu decidi unir os dados, e depois do processamento, repartí-los novamente em dados de treino e de teste.
 
 ## Preprocessamento dos dados
 ```{r}
@@ -71,7 +71,12 @@ alunos.dados.completos <- alunos.dados.completos %>%
   select(matricula,disciplina,media) %>% 
   mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
   dcast(matricula ~ disciplina, mean) %>%
-  merge(alunos.cra)
+  merge(alunos.cra) %>%
+  na.omit()
+
+split <- createDataPartition(y=alunos.dados.completos$cra, p = 0.7, list = FALSE)
+alunos.treino <- alunos.dados.completos[split,]
+alunos.teste <- alunos.dados.completos[-split,]
 
 # names(graduados.dados.treino)[2:13] <-sort(disciplinas.iniciais) 
 
