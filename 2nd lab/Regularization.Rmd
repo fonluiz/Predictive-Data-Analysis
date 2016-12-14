@@ -29,32 +29,24 @@ students.test.data <- read.csv("data/graduados_teste.csv")
 ## Entendendo o problema e os dados
 
 O objetivo deste exercício é construir modelos preditivos de regressão utilizando técnicas de regularização e seleção de variáveis para a predição do CRA baseados nas disciplinas do primeiro e segundo semestres. Os dados são sobre os alunos do Curso de Ciência da Computação da Universidade Federal de Campina Grande. Os dados fornecidos foram divididos em dados de treinos e de teste. Os dados de teste são cronologicamente posteriores aos dados de treino para que dessa forma podemos prever o "futuro" com base no passado.
+
 ## Preprocessamento dos dados
 ```{r}
-# Renomea as colunas
-names(students.train.data) <- c("matricula", "ano_formatura", "periodo_formatura",
+preProcessModelInput <- function(dataframe) {
+  # Renomea as colunas
+  names(dataframe) <- c("matricula", "ano_formatura", "periodo_formatura",
                                 "cod_disciplina", "disciplina", "creditos", "media")
-names(students.test.data) <- c("matricula", "ano_formatura", "periodo_formatura",
-                                "cod_disciplina", "disciplina", "creditos", "media")
-
-# Retira os valores NA das médias
-students.train.data <- students.train.data %>% 
+  # Retira os valores NA das médias
+  dataframe <- dataframe %>% 
   filter(!is.na(media))
-students.test.data <- students.test.data %>% 
-  filter(!is.na(media))
-
-# Calcula o CRA de cada aluno
-alunos.cra.treino <- students.train.data %>%
+  
+  # Calcula o CRA de cada aluno
+  dataframe.cra <- dataframe %>%
   group_by(matricula) %>%
   mutate(cra.contrb = media*creditos) %>%
   summarise(cra = round(sum(cra.contrb)/sum(creditos), 2))
-
-alunos.cra.test <- students.test.data %>%
-  group_by(matricula) %>%
-  mutate(cra.contrb = media*creditos) %>%
-  summarise(cra = round(sum(cra.contrb)/sum(creditos), 2))
-
-disciplinas.iniciais <- c(
+  
+  disciplinas.iniciais <- c(
   "Cálculo Diferencial e Integral I",
   "Álgebra Vetorial e Geometria Analítica",
   "Leitura e Produção de Textos",
@@ -68,9 +60,9 @@ disciplinas.iniciais <- c(
   "Fundamentos de Física Clássica",
   "Laboratório de Programação II"
   )
-
-# Transforma o dataframe em um formato ideal para ser utilizado como entrada do modelo
-students.train.data <- students.train.data %>%
+  
+  # Transforma o dataframe em um formato ideal para ser utilizado como entrada do modelo
+  dataframe <- dataframe %>%
   filter(disciplina %in% disciplinas.iniciais) %>%
   group_by(matricula,disciplina)  %>%
   filter(media == max(media)) %>%
@@ -78,22 +70,14 @@ students.train.data <- students.train.data %>%
   select(matricula,disciplina,media) %>% 
   mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
   dcast(matricula ~ disciplina, mean) %>%
-  merge(alunos.cra.treino) %>%
+  merge(dataframe.cra) %>%
   na.omit()
+  
+  return(dataframe)
+}
 
-students.test.data <- students.test.data %>%
-  filter(disciplina %in% disciplinas.iniciais) %>%
-  group_by(matricula,disciplina)  %>%
-  filter(media == max(media)) %>%
-  ungroup() %>%
-  select(matricula,disciplina,media) %>% 
-  mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
-  dcast(matricula ~ disciplina, mean) %>%
-  merge(alunos.cra.test) %>%
-  na.omit()
-
-# names(graduados.dados.treino)[2:13] <-sort(disciplinas.iniciais) 
-
+students.train.data <- students.train.data %>% preProcessModelInput()
+students.test.data <- students.test.data %>% preProcessModelInput()
 ```
 
 ## Atividades
@@ -123,12 +107,12 @@ ridge.fit <- train(form = cra ~.,
 ridge.fit
 ```
 
-O melhor modelo gerado, levando em consideração o modelo que apresentou menor RMSE, foi o modelo cujo lambda é 0.1629751. O RMSE foi igual a 0.5666946 e o R² foi igual a 0.5831063 para o treinamento. É importante saber que esses valores podem mudar ligeiramente a cada vez que rodamos o treino.
+O melhor modelo gerado, levando em consideração o modelo que apresentou menor RMSE, foi o modelo cujo lambda é 0.1629751. O RMSE foi igual a 0.5666946 e o R² foi igual a 0.5831063 para o treinamento. É importante saber que esses valores podem variar um pouco a cada vez que rodamos o treino.
 
 <b><li>Mesmo que o item acima mas usando um modelo de regressão Lasso. </b></li>
 
 <p>Explicação sobre o método Lasso:</p>
-<p>O método Lasso é uma recente alternativa à regressão Ridge. A desvantagem da Ridge é que ela utiliza todas as variáveis. Embora todos os coeficientes tendam a se aproximar de 0, todos sao utilizados. Na regressão Lasso, alguns coeficientes são forçados à exatamente 0, e isso significa que podemos descartar algumas variáveis. Essa é a grande vantagem do método Lasso em detrimento do método Ridge.</p>   
+<p>O método Lasso é uma recente alternativa à regressão Ridge. A desvantagem da Ridge é que ela utiliza todas as variáveis. No ridge, embora todos os coeficientes tendam a se aproximar de 0, todos sao utilizados. Na regressão Lasso, alguns coeficientes são forçados à exatamente 0, e isso significa que podemos descartar algumas variáveis. Essa é a grande vantagem do método Lasso em detrimento do método Ridge.</p>   
 
 ```{r}
 lasso.fit <- train(
@@ -154,7 +138,7 @@ predict.enet(lasso.fit$finalModel, type='coefficients', s=lasso.fit$bestTune$fra
 
 Então, a regressão Lasso apontou que podemos descartar 3 variáveis do nosso modelo. São elas, Laboratório.de.Programação.I, Leitura.e.Produção.de.Textos e Programação.I. Podemos verificar quais variáveis são mais importantes no gráfico abaixo:
 
-```{r, echo=FALSE}
+```{r}
 ggplot(varImp(lasso.fit)) +
   geom_bar(stat="identity", fill="#56B4E9", colour="black") +
   labs(title="Importância de variáveis (Lasso)", y="Importância", x="Variável")
@@ -166,17 +150,15 @@ ggplot(varImp(lasso.fit)) +
 Agora, serão usados os dados de treino para termos uma noção melhor sobre o poder preditivo dos nossos modelos.
 
 ```{r}
-get.rmse <- function(error) {
+rmse <- function(error) {
     sqrt(mean(error^2))
 }
 
 ridge.pred <- predict(ridge.fit, students.test.data)
-ridge.rmse <- get.rmse(ridge.pred - students.test.data$cra).
-df <- data.frame(pred=ridge.pred, obs=students.test.data$cra)
-round(defaultSummary(df), digits = 3)
+ridge.rmse <- rmse(ridge.pred - students.test.data$cra)
 
 lasso.pred <- predict(lasso.fit, students.test.data)
-lasso.rmse <- get.rmse(lasso.pred - students.test.data$cra)
+lasso.rmse <- rmse(lasso.pred - students.test.data$cra)
 
 ridge.rmse
 lasso.rmse
@@ -188,8 +170,23 @@ lasso.rmse
 
 <b><li>Re-treine o melhor modelo (dessa vez nos dados de treino sem validação cruzada) e reporte o RMSE no teste.</b></li>
 
-```{r}
+Vamos retreinar o modelo ridge sem utilizar a validação cruzada.
 
+```{r}
+ridge.fit.no.cv <- train(form = cra ~.,
+                   data = students.train.data %>% select(-matricula),
+                   method = 'ridge',
+                   tuneGrid = lambdaGrid,
+                   preProcess = c('scale', 'center'),
+                   na.action = na.omit)
+
+ridge.no.cv.pred <- predict(ridge.fit.no.cv, students.test.data)
+ridge.no.cv.rmse <- rmse(ridge.no.cv.pred - students.test.data$cra)
+ridge.no.cv.rmse
 ```
+
+Sem o uso da validação cruzada, o RMSE teve uma queda desprezível. Isso acontece porquê a validação cruzada (cross validation) não altera em nada o resultado dos testes. A validação cruzada pode ser utilizada para estimar o erro de teste associado a um determinado método de aprendizado estatístico e com isso podemos melhor avaliar a performance do modelo gerado, ou selecionar um nível apropriado de flexibilidade.s
+
+<b><li>Use ou tente melhorar o seu modelo para prever os dados de teste que disponibilizamos por meio da plataforma Kaggle:</b></li>
 
 </ol>
