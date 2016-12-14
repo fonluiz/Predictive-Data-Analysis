@@ -19,6 +19,7 @@ library(dplyr)
 library(ggplot2)
 library(reshape2)
 library(caret)
+library(leaps)
 
 students.train.data <- read.csv("data/graduados_treino.csv")
 students.test.data <- read.csv("data/graduados_teste.csv")
@@ -121,9 +122,9 @@ lasso.fit <- train(
   method = 'lasso',
   preProc = c('scale', 'center'),
   trControl = fitControl
-  )
+)
   
-  lasso.fit
+lasso.fit
 ```
 
 O melhor modelo apontado pelo Lasso no treinamento possui um RMSE igual a 0.5380783 e um R² igual a 0.6531297. 
@@ -188,5 +189,6 @@ ridge.no.cv.rmse
 Sem o uso da validação cruzada, o RMSE teve uma queda desprezível. Isso acontece porquê a validação cruzada (cross validation) não altera em nada o resultado dos testes. A validação cruzada pode ser utilizada para estimar o erro de teste associado a um determinado método de aprendizado estatístico e com isso podemos melhor avaliar a performance do modelo gerado, ou selecionar um nível apropriado de flexibilidade.s
 
 <b><li>Use ou tente melhorar o seu modelo para prever os dados de teste que disponibilizamos por meio da plataforma Kaggle:</b></li>
+
 
 </ol>
