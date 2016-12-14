@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, set.seed(825))
 
 # setwd("/home/luiz/Faculdade/Predictive-Data-Analysis/2nd lab/")
 ```
@@ -29,7 +29,7 @@ students.test.data <- read.csv("data/graduados_teste.csv")
 O objetivo deste exercício é construir modelos preditivos de regressão utilizando técnicas de regularização e seleção de variáveis para a predição do CRA baseados nas disciplinas do primeiro e segundo semestres. Os dados são sobre os alunos do Curso de Ciência da Computação da Universidade Federal de Campina Grande. Os dados fornecidos foram divididos em dados de treinos e de teste, entretanto, depois de algum processamento para ajustar os dados para servirem como entrada para o método de regularização, os dados de treino acabaram ficando com menos amostras do que os dados de teste. Por essa razão, eu decidi unir os dados, e depois do processamento, repartí-los novamente em dados de treino e de teste.
 
 ## Preprocessamento dos dados
-```{r}
+```{r, message=FALSE}
 # Une dados de treino e de teste
 alunos.dados.completos <- rbind(students.train.data, students.test.data)
 
@@ -84,21 +84,85 @@ alunos.teste <- alunos.dados.completos[-split,]
 
 ## Atividades
 <ol>
-<li><b>Usando todas as variáveis disponíveis (disciplinas do primeiro e segundo período), use validação cruzada (nos dados de treino) para tunar um modelo de regressão Ridge. <b></li>
+<li><b>Usando todas as variáveis disponíveis (disciplinas do primeiro e segundo período), use validação cruzada (nos dados de treino) para tunar um modelo de regressão Ridge. </b></li>
 
-```{r}
+Será utilizado o pacote caret, que implementa funções para tunar modelos usando o método ridge, lasso ou outros. Será utilizada uma validação cruzada 10-fold.
+
+<p>Explicação sobre a regressão Ridge:</p>
+<p>A grande vantagem do método ridge é que através dele podemos diminuir a variância do modelo ao custo de um pequeno aumento no BIAS. O método ridge tende a aproximar os coeficientes das variáveis preditores de 0, conforme o lambda aumenta. Isso diminui a flexibilidade do modelo, diminuindo também a variância, porém aumentando o BIAS. A ideia por trás da regressão Ridge é encontrar um lambda que gere um trade-off satisfatório entre BIAS e Variância.</p>
+
+```{r, message=FALSE}
+# library(caret)
+set.seed(825) # Para reproduzir os resultados
+
 fitControl <- trainControl(method = "cv",
                            number = 10)
 
 lambdaGrid <- expand.grid(lambda = 10^seq(10, -2, length=100))
 
-ridge.fit <- train(cra ~. -matricula,
-                   data = graduados.dados.treino,
+ridge.fit <- train(form = cra ~. -matricula,
+                   data = alunos.treino,
                    trControl = fitControl,
-                   method='ridge',
+                   method = 'ridge',
                    tuneGrid = lambdaGrid,
-                   preProcess=c('scale', 'center'),
+                   preProcess = c('scale', 'center'),
                    na.action = na.omit)
+
+ridge.fit
 ```
+
+O melhor modelo gerado, levando em consideração o modelo que apresentou menor RMSE, foi o modelo cujo lambda é 0.1232847. O RMSE foi igual a 0.5255 e o R² foi igual a 0.6351 para o treinamento.
+
+<b><li>Mesmo que o item acima mas usando um modelo de regressão Lasso. </b></li>
+
+<p>Explicação sobre o método Lasso:</p>
+<p>O método Lasso é uma recente alternativa à regressão Ridge. A desvantagem da Ridge é que ela utiliza todas as variáveis. Embora todos os coeficientes tendam a se aproximar de 0, todos sao utilizados. Na regressão Lasso, alguns coeficientes são forçados à exatamente 0, e isso significa que podemos descartar algumas variáveis. Essa é a grande vantagem do método Lasso em detrimento do método Ridge.</p>
+
+```{r}
+set.seed(825)
+
+lasso.fit <- train(
+  form = cra ~ . - matricula,
+  data = alunos.treino,
+  method = 'lasso',
+  preProc = c('scale', 'center'),
+  trControl = fitControl
+  )
+  
+  lasso.fit
+```
+
+O melhor modelo apontado pelo Lasso no treinamento possui um RMSE igual a 0.5226 e um R² igual a 0.6054. Vamos verificar se alguma variável preditora ficou com coeficiente exatamente 0.
+
+<b><li> Quais as variáveis mais importantes segundo o modelo de regressão Lasso? Alguma variável foi descartada? Quais? </b></li>
+
+```{r}
+predict.enet(lasso.fit$finalModel, type='coefficients', s=lasso.fit$bestTune$fraction, mode='fraction')
+```
+
+Então, a regressão Lasso apontou que podemos descartar 4 variáveis do nosso modelo. São elas, Laboratório.de.Programação.II, Cálculo.Diferencial.e.Integral.I, Fundamentos.de.Física.Clássica e Programação.I.
+
+<b><li>Compare os dois modelos nos dados de teste em termos de RMSE.</b></li>
+
+Agora, serão usados os dados de treino para termos uma noção melhor sobre o poder preditivo dos nossos modelos.
+
+```{r}
+get.rmse <- function(error) {
+    sqrt(mean(error^2))
+}
+
+ridge.pred <- predict(ridge.fit, alunos.teste)
+ridge.rmse <- get.rmse(ridge.pred - alunos.teste$cra)
+
+lasso.pred <- predict(lasso.fit, alunos.teste)
+lasso.rmse <- get.rmse(lasso.pred - alunos.teste$cra)
+
+ridge.rmse
+lasso.rmse
+```
+
+<p>Comparando os dois modelos nos dados de teste, temos que o método ridge apresentou um RMSE ligeiramente menor do que o método lasso, a saber, 0.4784 (ridge) contra 0.4853 (lasso). </p>
+
+<p>De uma forma geral, o Lasso tem um comportamento bastante similar com a regressão ridge em termos de variância e BIAS. O Lasso produz resultados melhores do que o ridge em casos que somente poucos preditores têm coeficientes significantes e o restante possuem coeficientes muito próximos de ou iguais a zero. A regressão ridge obterá resultados melhores que a lasso em casos que a variável de resposta possui muitos preditores e todos com valores na mesma faixa. </p>
 
 </ol>
