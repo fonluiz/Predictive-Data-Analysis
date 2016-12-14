@@ -3,25 +3,27 @@ title: 'Parte 3: Predição'
 author: "Luiz Fonseca"
 date: "7 de dezembro de 2016"
 output: html_document
+
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, set.seed(825))
+knitr::opts_chunk$set(cache=F, echo = TRUE, set.seed(825), message=FALSE, warning=FALSE)
 
 # setwd("/home/luiz/Faculdade/Predictive-Data-Analysis/2nd lab/")
 ```
 
 Primeiro vamos carregar os dados e bibliotecas que serão utilizados.
 
-```{r, results='hide', message=FALSE, warning=FALSE}
+```{r, results='hide'}
 library(dplyr)
 library(ggplot2)
 library(reshape2)
 library(caret)
-# library(leaps)
 
 students.train.data <- read.csv("data/graduados_treino.csv")
 students.test.data <- read.csv("data/graduados_teste.csv")
+
+# set.seed(825) # Para reproduzir os resultados
 ```
 
 ## Entendendo o problema e os dados
@@ -29,7 +31,7 @@ students.test.data <- read.csv("data/graduados_teste.csv")
 O objetivo deste exercício é construir modelos preditivos de regressão utilizando técnicas de regularização e seleção de variáveis para a predição do CRA baseados nas disciplinas do primeiro e segundo semestres. Os dados são sobre os alunos do Curso de Ciência da Computação da Universidade Federal de Campina Grande. Os dados fornecidos foram divididos em dados de treinos e de teste, entretanto, depois de algum processamento para ajustar os dados para servirem como entrada para o método de regularização, os dados de treino acabaram ficando com menos amostras do que os dados de teste. Por essa razão, eu decidi unir os dados, e depois do processamento, repartí-los novamente em dados de treino e de teste.
 
 ## Preprocessamento dos dados
-```{r, message=FALSE}
+```{r}
 # Une dados de treino e de teste
 alunos.dados.completos <- rbind(students.train.data, students.test.data)
 
@@ -91,9 +93,9 @@ Será utilizado o pacote caret, que implementa funções para tunar modelos usan
 <p>Explicação sobre a regressão Ridge:</p>
 <p>A grande vantagem do método ridge é que através dele podemos diminuir a variância do modelo ao custo de um pequeno aumento no BIAS. O método ridge tende a aproximar os coeficientes das variáveis preditores de 0, conforme o lambda aumenta. Isso diminui a flexibilidade do modelo, diminuindo também a variância, porém aumentando o BIAS. A ideia por trás da regressão Ridge é encontrar um lambda que gere um trade-off satisfatório entre BIAS e Variância.</p>
 
-```{r, message=FALSE}
+```{r}
 # library(caret)
-set.seed(825) # Para reproduzir os resultados
+
 
 fitControl <- trainControl(method = "cv",
                            number = 10)
@@ -119,8 +121,6 @@ O melhor modelo gerado, levando em consideração o modelo que apresentou menor 
 <p>O método Lasso é uma recente alternativa à regressão Ridge. A desvantagem da Ridge é que ela utiliza todas as variáveis. Embora todos os coeficientes tendam a se aproximar de 0, todos sao utilizados. Na regressão Lasso, alguns coeficientes são forçados à exatamente 0, e isso significa que podemos descartar algumas variáveis. Essa é a grande vantagem do método Lasso em detrimento do método Ridge.</p>
 
 ```{r}
-set.seed(825)
-
 lasso.fit <- train(
   form = cra ~ . - matricula,
   data = alunos.treino,
