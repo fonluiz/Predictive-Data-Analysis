@@ -190,5 +190,27 @@ Sem o uso da validação cruzada, o RMSE teve uma queda desprezível. Isso acont
 
 <b><li>Use ou tente melhorar o seu modelo para prever os dados de teste que disponibilizamos por meio da plataforma Kaggle:</b></li>
 
+```{r}
+# pcr, pls, gpls
+pcr.fit <- train(form = cra ~.,
+                 data = students.train.data %>% select(-matricula),
+                 method = 'pls',
+                 preProcess = c('scale', 'center'),
+                 trControl = fitControl)
+pcr.fit
+
+pcr.pred <- predict(pcr.fit, students.test.data, ncomp=7)
+pcr.rmse <- rmse(pcr.pred - students.test.data$cra)
+pcr.rmse
+
+# 0.3660131
+```
+
+```{r}
+teste.kaggle <- read.csv("data/test.csv")
+kaggle.pred <- predict(pcr.fit, teste.kaggle, ncomp=7)
+submission <- data.frame(matricula = teste.kaggle$matricula, cra = kaggle.pred)
+write.csv(submission, "submission.csv", row.names = FALSE)
+```
 
 </ol>
