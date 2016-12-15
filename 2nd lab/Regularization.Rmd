@@ -191,9 +191,11 @@ Sem o uso da validação cruzada, o RMSE teve uma queda desprezível. Isso acont
 <b><li>Use ou tente melhorar o seu modelo para prever os dados de teste que disponibilizamos por meio da plataforma Kaggle:</b></li>
 
 ```{r}
+students.train.data <- students.train.data %>% select(-matricula)
 # pcr, pls, gpls
+# pls foi o melhor
 pcr.fit <- train(form = cra ~.,
-                 data = students.train.data %>% select(-matricula),
+                 data = students.train.data,
                  method = 'pls',
                  preProcess = c('scale', 'center'),
                  trControl = fitControl)
@@ -204,6 +206,46 @@ pcr.rmse <- rmse(pcr.pred - students.test.data$cra)
 pcr.rmse
 
 # 0.3660131
+```
+
+```{r}
+# Regressão polynomial
+library(ISLR)
+attach(Wage)
+
+library(boot)
+
+cra_parcial <- function(dataframe) {
+  dataframe$cra.parcial <- round(((
+  rowMeans(
+  dataframe %>% select(
+  Álgebra.Vetorial.e.Geometria.Analítica,
+  Cálculo.Diferencial.e.Integral.II,
+  Introdução.à.Computação,
+  Laboratório.de.Programação.II,
+  Matemática.Discreta,
+  Programação.II,
+  Cálculo.Diferencial.e.Integral.I,
+  Fundamentos.de.Física.Clássica,
+  Laboratório.de.Programação.I,
+  Leitura.e.Produção.de.Textos,
+  Programação.I
+  )
+  ) * 4
+  ) + (
+  dataframe$Teoria.dos.Grafos * 2
+  )) / 6, 2)
+  
+  return(dataframe)
+}
+
+students.train.data <- cra_parcial(students.train.data)
+students.train.data <- cra_parcial(students.test.data)
+
+
+fit = lm(cra ~ poly(cra.parcial, degree = 4), data=students.train.data)
+summary(fit)
+pred <- predict(fit, students.test.data)
 ```
 
 ```{r}
