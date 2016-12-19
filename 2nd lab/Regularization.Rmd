@@ -190,67 +190,26 @@ Sem o uso da validação cruzada, o RMSE teve uma queda desprezível. Isso acont
 
 <b><li>Use ou tente melhorar o seu modelo para prever os dados de teste que disponibilizamos por meio da plataforma Kaggle:</b></li>
 
+Para melhorar o modelo eu tentei várias abordagens. Primeiro tentei introduzir variáveis que eu achei que poderiam explicar o cra, dentre estas, a média do aluno em disciplinas que envolvam muita matemática, a média do aluno em disciplnas focadas em programação e o cra do aluno para os dois primeiros semestres. Essa abordagem não funcionou. O RMSE nos dados de validação continuou igual ou piorou. Outra abordagem foi tentar retirar algumas variávies do modelo, mas esta também não melhorou o RMSE. O que realmente melhorou o RMSE foi encontrar um novo método de regressão que seja melhor modele os dados. Esse método foi  o Partial Least Squares (PLS), que é um método de redução de dimensão. 
+
 ```{r}
 students.train.data <- students.train.data %>% select(-matricula)
 # pcr, pls, gpls
 # pls foi o melhor
-pcr.fit <- train(form = cra ~.,
+pls.fit <- train(form = cra ~.,
                  data = students.train.data,
                  method = 'pls',
                  preProcess = c('scale', 'center'),
                  trControl = fitControl)
-pcr.fit
 
-pcr.pred <- predict(pcr.fit, students.test.data, ncomp=7)
-pcr.rmse <- rmse(pcr.pred - students.test.data$cra)
-pcr.rmse
-
-# 0.3660131
+pls.pred <- predict(pls.fit, students.test.data, ncomp=7)
+pls.rmse <- rmse(pls.pred - students.test.data$cra)
+pls.rmse
 ```
 
-```{r}
-# Regressão polynomial
-library(ISLR)
-attach(Wage)
-
-library(boot)
-
-cra_parcial <- function(dataframe) {
-  dataframe$cra.parcial <- round(((
-  rowMeans(
-  dataframe %>% select(
-  Álgebra.Vetorial.e.Geometria.Analítica,
-  Cálculo.Diferencial.e.Integral.II,
-  Introdução.à.Computação,
-  Laboratório.de.Programação.II,
-  Matemática.Discreta,
-  Programação.II,
-  Cálculo.Diferencial.e.Integral.I,
-  Fundamentos.de.Física.Clássica,
-  Laboratório.de.Programação.I,
-  Leitura.e.Produção.de.Textos,
-  Programação.I
-  )
-  ) * 4
-  ) + (
-  dataframe$Teoria.dos.Grafos * 2
-  )) / 6, 2)
-  
-  return(dataframe)
-}
-
-students.train.data <- cra_parcial(students.train.data)
-students.train.data <- cra_parcial(students.test.data)
-
-
-fit = lm(cra ~ poly(cra.parcial, degree = 4), data=students.train.data)
-summary(fit)
-pred <- predict(fit, students.test.data)
-```
-
-```{r}
+```{r, include=FALSE}
 teste.kaggle <- read.csv("data/test.csv")
-kaggle.pred <- predict(pcr.fit, teste.kaggle, ncomp=7)
+kaggle.pred <- predict(pls.fit, teste.kaggle, ncomp=7)
 submission <- data.frame(matricula = teste.kaggle$matricula, cra = kaggle.pred)
 write.csv(submission, "submission.csv", row.names = FALSE)
 ```
