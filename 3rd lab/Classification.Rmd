@@ -1,0 +1,54 @@
+---
+title: 'Lab 3 - Parte 1: Entendendo os Dados'
+author: "Luiz Fonseca"
+date: "15 de fevereiro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+dados <- read.csv("~/Faculdade/Predictive-Data-Analysis/data/treino_classificacao.csv")
+names(dados) <- c("matricula", "cod_disciplina", "disciplina", "ano", "periodo", "media", "evadiu")
+```
+
+## Questões
+<ol>
+<li>Gere uma visualização que mostre em que ano houve mais evasões </li>
+
+Os gráficos abaixo nos dão uma ideia geral das evasões de aunos por ano. O primeiro mostra a evasão por ano em números absolutos e o segundo mostra a frequência relativa de alunos que evadiram de acordo com o total de alunos que temos nos dados por ano. Em ambos os casos, o ano em que houve mais evasão foi 2011, onde dentre 630 alunos, 53 evadiram (8,4 % do total).
+
+```{r}
+evasoes.por.ano <- dados %>% select(ano, evadiu) %>%
+  group_by(ano) %>%
+  filter(evadiu == TRUE) %>%
+  table()
+evasoes.por.ano <- as.data.frame(evasoes.por.ano)
+evasoes.por.ano <- evasoes.por.ano %>% select(-evadiu)
+names(evasoes.por.ano) <- c("ano", "evasoes")
+
+alunos.por.ano <- as.data.frame(dados %>% select(ano) %>% table())
+names(alunos.por.ano) <- c("ano", "total_alunos")
+evasoes.por.ano <- full_join(evasoes.por.ano, alunos.por.ano, by = "ano") 
+evasoes.por.ano$evasoes[is.na(evasoes.por.ano$evasoes)] <- 0
+evasoes.por.ano$freq_rel <- evasoes.por.ano$evasoes / evasoes.por.ano$total_alunos
+
+evasoes.por.ano <- evasoes.por.ano %>% arrange(-evasoes)
+evasoes.absolutas <- ggplot(data=evasoes.por.ano, aes(x=ano, y=evasoes)) +
+    geom_bar(stat="identity") + coord_flip()
+evasoes.absolutas
+
+evasoes.por.ano <- evasoes.por.ano %>% arrange(-freq_rel)
+evasoes.relativas <- ggplot(data=evasoes.por.ano, aes(x=ano, y=freq_rel)) +
+    geom_bar(stat="identity") + coord_flip()
+evasoes.relativas
+```
+
+<li> Gere uma visualização da distribuição das classes (número de instâncias de cada classe nos dados) </li>
+</ol>
