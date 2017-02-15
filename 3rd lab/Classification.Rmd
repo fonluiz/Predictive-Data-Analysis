@@ -97,5 +97,47 @@ geom_bar(width = 1, stat = "identity")  + coord_polar("y", start=0) +
 
 <li>Crie pelo menos um atributo novo, que não seja a média da disciplina, que você acha que pode ajudar na classificação. </li>
 
+O atributo que criei é o número de provas finais que o aluno fez no primeiro semestre. Somente com os dados que temos não é ossível determinar se um aluno fez ou não a prova final de uma disciplina. Então, o meu critério foi: se o aluno obteve média inferior a 7 então será considerado que ele fez a prova final daquela disciplina. Eu acho que esse é um bom atributo para a classificação, pois se um aluno fez muitas provas finais provavelmente ele não se interessou pelo curso ou achou o curso muito difícil e esses são fatores fortes de evasão na minha opinião.
+
+```{r}
+quantas.finais <- function(medias) {
+  temp <- medias[medias < 7]
+  return(length(temp))
+}
+
+levels(dados$disciplina)
+dados <- dados %>%
+  group_by(matricula) %>%
+  mutate(num_finais = quantas.finais(medias = media))
+
+evadiu.true <- dados %>%
+  ungroup() %>%
+  filter(evadiu == TRUE) %>%
+  select(num_finais) %>%
+  table()
+
+evadiu.false <- dados %>%
+  ungroup() %>%
+  filter(evadiu == FALSE) %>%
+  select(num_finais) %>%
+  table()
+
+evadiu.true <- as.data.frame(evadiu.true)
+evadiu.false <- as.data.frame(evadiu.false)
+names(evadiu.true) <- c("num_finais", "freq.evadiu.true")
+names(evadiu.false) <- c("num_finais", "freq.evadiu.false")
+
+finais <- full_join(evadiu.true, evadiu.false, by = "num_finais")
+
+ggplot(data = finais, aes(x = num_finais, y = freq.evadiu.true)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Frequencia do atributo para evadiu == TRUE",
+       x = "número de provas finais", y = "número de alunos")
+
+ggplot(data = finais, aes(x = num_finais, y = freq.evadiu.false)) +
+  geom_bar(stat = "identity") +
+    labs(title = "Frequencia do atributo para evadiu == FALSE",
+       x = "número de provas finais", y = "número de alunos")
+```
 
 </ol>
