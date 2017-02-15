@@ -22,33 +22,80 @@ names(dados) <- c("matricula", "cod_disciplina", "disciplina", "ano", "periodo",
 <ol>
 <li>Gere uma visualização que mostre em que ano houve mais evasões </li>
 
-Os gráficos abaixo nos dão uma ideia geral das evasões de aunos por ano. O primeiro mostra a evasão por ano em números absolutos e o segundo mostra a frequência relativa de alunos que evadiram de acordo com o total de alunos que temos nos dados por ano. Em ambos os casos, o ano em que houve mais evasão foi 2011, onde dentre 630 alunos, 53 evadiram (8,4 % do total).
+Os gráficos abaixo nos dão uma ideia geral das evasões de aunos por ano. O primeiro mostra a evasão por ano em números absolutos e o segundo mostra a frequência relativa de alunos que evadiram em cada ano de acordo com o total de alunos que temos nos dados. Em ambos os casos, o ano em que houve mais evasão foi 2011, onde dentre 630 alunos, 53 evadiram (8,4 % do total).
 
 ```{r}
-evasoes.por.ano <- dados %>% select(ano, evadiu) %>%
+evasoes.por.ano <- dados %>% 
+  select(ano, evadiu) %>%
   group_by(ano) %>%
   filter(evadiu == TRUE) %>%
   table()
+
 evasoes.por.ano <- as.data.frame(evasoes.por.ano)
 evasoes.por.ano <- evasoes.por.ano %>% select(-evadiu)
 names(evasoes.por.ano) <- c("ano", "evasoes")
 
 alunos.por.ano <- as.data.frame(dados %>% select(ano) %>% table())
 names(alunos.por.ano) <- c("ano", "total_alunos")
+
 evasoes.por.ano <- full_join(evasoes.por.ano, alunos.por.ano, by = "ano") 
 evasoes.por.ano$evasoes[is.na(evasoes.por.ano$evasoes)] <- 0
 evasoes.por.ano$freq_rel <- evasoes.por.ano$evasoes / evasoes.por.ano$total_alunos
 
-evasoes.por.ano <- evasoes.por.ano %>% arrange(-evasoes)
-evasoes.absolutas <- ggplot(data=evasoes.por.ano, aes(x=ano, y=evasoes)) +
-    geom_bar(stat="identity") + coord_flip()
-evasoes.absolutas
+evasoes.por.ano$ano = factor(evasoes.por.ano$ano,
+                             levels=evasoes.por.ano$ano[order(evasoes.por.ano$evasoes)],
+                             ordered=TRUE)
 
-evasoes.por.ano <- evasoes.por.ano %>% arrange(-freq_rel)
-evasoes.relativas <- ggplot(data=evasoes.por.ano, aes(x=ano, y=freq_rel)) +
-    geom_bar(stat="identity") + coord_flip()
-evasoes.relativas
+ggplot(data=evasoes.por.ano, aes(x=ano, y=evasoes)) +
+  geom_bar(stat="identity") + 
+  coord_flip() +
+  labs(title = "Evasões por ano", y = "Número de evasões", x = "ano")
+
+evasoes.por.ano$ano = factor(evasoes.por.ano$ano,
+                             levels=evasoes.por.ano$ano[order(evasoes.por.ano$freq_rel)],
+                             ordered=TRUE)
+
+ggplot(data=evasoes.por.ano, aes(x=ano, y=freq_rel)) +
+  geom_bar(stat="identity") + 
+  coord_flip() +
+  labs(title = "Evasões por ano (frequência relativa)",
+       y = "Proporção de alunos que evadiram", x = "ano")
+
 ```
 
 <li> Gere uma visualização da distribuição das classes (número de instâncias de cada classe nos dados) </li>
+
+Como podemos observar no gráfico abaixo, há nos dados muito mais alunos que nao evadiram (96,1%) do que alunos que evadiram (3,9%).
+```{r}
+library(scales)
+proporcao.evasoes <- as.data.frame(dados$evadiu %>% table())
+names(proporcao.evasoes) <- c("evadiu", "frequencia")
+
+blank_theme <- theme_minimal()+
+  theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.border = element_blank(),
+  panel.grid=element_blank(),
+  axis.ticks = element_blank(),
+  plot.title=element_text(size=14, face="bold")
+  )
+
+ggplot(proporcao.evasoes, aes(x="", y=frequencia, fill=evadiu))+
+  blank_theme + theme(axis.text.x=element_blank()) +
+  scale_fill_brewer() +
+geom_bar(width = 1, stat = "identity")  + coord_polar("y", start=0) +
+  geom_text(aes(y = frequencia/3 + c(0, cumsum(frequencia)[-length(frequencia)]), 
+            label = percent(frequencia/7874)), size=5)
+```
+
+<li>Há desbalanceamento das classes (isto é, uma classe tem muito mais instâncias que outra)? Em que proporção? Quais efeitos colaterais o desbalancemanento de classes pode causar no classificador?</li>
+
+<p>Sim, há muito mais instâncias FALSE do que TRUE para a variável de resposta, ou seja, há muito mais dados de alunos que não evadiram do que de alunos que evadiram. A proporção pode ser vista na visualização acima: FALSE - 96,1% e TRUE - 3,9%. </p>
+
+<p>Com classes desbalanceadas, o classificador pode se tornar enviesado para a classe majoritária. Os algoritmos de classificação tentam diminuir o erro geral da previsão, porém com classes desbalanceadas o erro real pode ser enconberto. Os algoritmos em geral assumem que as classes estarão balanceadas e também assumem que erros obtidos por diferentes classes possuem o mesmo custo. </p>
+
+<li>Crie pelo menos um atributo novo, que não seja a média da disciplina, que você acha que pode ajudar na classificação. </li>
+
+
 </ol>
