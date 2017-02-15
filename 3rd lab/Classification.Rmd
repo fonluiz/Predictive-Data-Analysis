@@ -25,20 +25,28 @@ names(dados) <- c("matricula", "cod_disciplina", "disciplina", "ano", "periodo",
 <ol>
 <b><li>Gere uma visualização que mostre em que ano houve mais evasões </li></b>
 
-Os gráficos abaixo nos dão uma ideia geral das evasões de alunos por ano. O primeiro mostra a evasão por ano em números absolutos e o segundo mostra a frequência relativa de alunos que evadiram em cada ano de acordo com o total de alunos daquele ano que temos nos dados. Em ambos os casos, o ano em que houve mais evasão foi 2011, onde dentre 630 alunos, 53 evadiram (8,4 % do total).
+Os gráficos abaixo nos dão uma ideia geral das evasões de alunos por ano. O primeiro mostra a evasão por ano em números absolutos e o segundo mostra a frequência relativa de alunos que evadiram em cada ano de acordo com o total de alunos daquele ano que temos nos dados. Em ambos os casos, o ano em que houve mais evasão foi 2011, onde dentre 113 alunos, 9 evadiram (7,96 % do total).
 
 ```{r, message=FALSE, warning=FALSE}
 evasoes.por.ano <- dados %>% 
-  select(ano, evadiu) %>%
-  group_by(ano) %>%
   filter(evadiu == TRUE) %>%
+  select(ano, matricula) %>%
+  group_by(ano, matricula) %>%
+  unique() %>%
+  ungroup() %>%
+  select(ano) %>%
   table()
 
 evasoes.por.ano <- as.data.frame(evasoes.por.ano)
-evasoes.por.ano <- evasoes.por.ano %>% select(-evadiu)
 names(evasoes.por.ano) <- c("ano", "evasoes")
 
-alunos.por.ano <- as.data.frame(dados %>% select(ano) %>% table())
+alunos.por.ano <- as.data.frame(dados %>% 
+                                  select(ano, matricula) %>% 
+                                  group_by(ano, matricula) %>%
+                                  unique() %>%
+                                  ungroup() %>%
+                                  select(ano) %>%
+                                  table())
 names(alunos.por.ano) <- c("ano", "total_alunos")
 
 evasoes.por.ano <- full_join(evasoes.por.ano, alunos.por.ano, by = "ano") 
@@ -70,9 +78,11 @@ ggplot(data=evasoes.por.ano, aes(x=ano, y=percent(freq_rel))) +
 
 Como podemos observar no gráfico abaixo, há nos dados muito mais alunos que nao evadiram (96,1%) do que alunos que evadiram (3,9%).
 ```{r, message=FALSE, warning=FALSE}
+total.alunos = sum(evasoes.por.ano$total_alunos)
+alunos.evadiu.true = sum(evasoes.por.ano$evasoes) / total.alunos
+alunos.evadiu.false = 1 - alunos.evadiu.true
 
-proporcao.evasoes <- as.data.frame(dados$evadiu %>% table())
-names(proporcao.evasoes) <- c("evadiu", "frequencia")
+proporcao.evasoes <-data.frame(evadiu = c(F, T), frequencia = c(alunos.evadiu.false, alunos.evadiu.true))
 
 blank_theme <- theme_minimal()+
   theme(
@@ -89,7 +99,7 @@ ggplot(proporcao.evasoes, aes(x="", y=frequencia, fill=evadiu))+
   scale_fill_brewer() +
 geom_bar(width = 1, stat = "identity")  + coord_polar("y", start=0) +
   geom_text(aes(y = frequencia/3 + c(0, cumsum(frequencia)[-length(frequencia)]), 
-            label = percent(frequencia/7874)), size=5)
+            label = percent(frequencia)), size=5)
 ```
 
 <b><li>Há desbalanceamento das classes (isto é, uma classe tem muito mais instâncias que outra)? Em que proporção? Quais efeitos colaterais o desbalancemanento de classes pode causar no classificador?</li></b>
@@ -117,12 +127,20 @@ dados <- dados %>%
 evadiu.true <- dados %>%
   ungroup() %>%
   filter(evadiu == TRUE) %>%
+  select(matricula, num_finais) %>%
+  group_by(matricula, num_finais) %>%
+  unique() %>%
+  ungroup() %>%
   select(num_finais) %>%
   table()
 
 evadiu.false <- dados %>%
   ungroup() %>%
   filter(evadiu == FALSE) %>%
+  select(matricula, num_finais) %>%
+  group_by(matricula, num_finais) %>%
+  unique() %>%
+  ungroup() %>%
   select(num_finais) %>%
   table()
 
@@ -144,5 +162,5 @@ ggplot(data = finais, aes(x = num_finais, y = freq.evadiu.false)) +
        x = "número de provas finais", y = "número de alunos")
 ```
 
-Cada aluno pode ter feito entre 0 e 6 provas finais. Podemos ver que dentre os alunos que evadiram (evadiu == TRUE), é bem mais comum alunos que fizeram quatro ou mais exames finais (74,3% dos alunos) do que alunos que fizeram tres ou menos finais (25,7%). E o contrário ocorre para alunos que não evadiram. Dentre estes alunos é bem mais comum alunos que fizeram 3 ou menos finais (72%) do que alunos que fizeram 4 ou mais finais (28%). Então podemos considerar esse um bom atributo pois ele possui distribuições quase que contrárias para diferentes classes da variável de reposta. Atributos que possuem distribuições diferentes entre as classes são melhores do que atributos que possuem distribuições parecidas pois eles discriminam melhor a variável de resposta. Para este caso, temos a intuição de que alunos que fizeram mais finais têm maiores chances de evadir.
+Cada aluno pode ter feito entre 0 e 6 provas finais. Podemos ver que dentre os alunos que evadiram (evadiu == TRUE), é bem mais comum alunos que fizeram quatro ou mais exames finais (73,6% dos alunos) do que alunos que fizeram tres ou menos finais (26,4%). E o contrário ocorre para alunos que não evadiram. Dentre estes alunos é bem mais comum alunos que fizeram 3 ou menos finais (72,1%) do que alunos que fizeram 4 ou mais finais (27,9%). Então podemos considerar esse um bom atributo pois ele possui distribuições quase que contrárias para diferentes classes da variável de reposta. Atributos que possuem distribuições diferentes entre as classes são melhores do que atributos que possuem distribuições parecidas pois eles discriminam melhor a variável de resposta. Para este caso, temos a intuição de que alunos que fizeram mais finais têm maiores chances de evadir.
 </ol>
