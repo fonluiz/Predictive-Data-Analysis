@@ -1,0 +1,34 @@
+---
+title: 'Lab 3 - Parte 2: Prevendo Evasão'
+author: "Luiz Fonseca"
+date: "20 de fevereiro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(reshape2)
+library(dplyr)
+
+dados <- read.csv("../data/treino_classificacao.csv")
+names(dados) <- c("matricula", "cod_disciplina", "disciplina", "ano", "periodo", "media", "evadiu")
+
+dados <- dados %>% select(-cod_disciplina, -periodo, -ano) %>% filter(!is.na(media))
+
+alunos.evadiu <- dados %>%
+  group_by(matricula) %>%
+  summarise(evadiu = any(evadiu))
+  
+model.input <- dados %>%
+  group_by(matricula, disciplina)  %>%
+  filter(media == max(media)) %>%
+  ungroup() %>%
+  select(matricula, disciplina, media) %>% 
+  mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
+  dcast(matricula ~ disciplina, mean) %>%
+  merge(alunos.evadiu)
+```
+
