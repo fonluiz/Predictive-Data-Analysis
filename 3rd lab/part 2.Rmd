@@ -12,23 +12,55 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(reshape2)
 library(dplyr)
+library(caret)
 
 dados <- read.csv("../data/treino_classificacao.csv")
 names(dados) <- c("matricula", "cod_disciplina", "disciplina", "ano", "periodo", "media", "evadiu")
 
-dados <- dados %>% select(-cod_disciplina, -periodo, -ano) %>% filter(!is.na(media))
+medias.abaixo.7 <- function(medias) {
+  temp <- medias[medias < 7]
+  return(length(temp))
+}
 
-alunos.evadiu <- dados %>%
+dados <- dados %>%
   group_by(matricula) %>%
-  summarise(evadiu = any(evadiu))
+  mutate(medias_abaixo_7 = medias.abaixo.7(media))
+
+train.data <- dados %>% filter(ano >= 2010, ano != 2015)
+test.data <- dados %>% filter(ano == 2015)
+
+convert.data.to.model.input <- function(dataframe) {
+  dataframe <- dataframe %>% select(-cod_disciplina, -periodo, -ano) %>% filter(!is.na(media))
   
-model.input <- dados %>%
-  group_by(matricula, disciplina)  %>%
-  filter(media == max(media)) %>%
-  ungroup() %>%
-  select(matricula, disciplina, media) %>% 
-  mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
-  dcast(matricula ~ disciplina, mean) %>%
-  merge(alunos.evadiu)
+  alunos.evadiu <- dataframe %>%
+    group_by(matricula) %>%
+    summarise(evadiu = any(evadiu),
+              medias_abaixo_7 = mean(medias_abaixo_7))
+    
+  model.input <- dataframe %>%
+    group_by(matricula, disciplina)  %>%
+    filter(media == max(media)) %>%
+    ungroup() %>%
+    select(matricula, disciplina, media) %>% 
+    mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
+    dcast(matricula ~ disciplina, mean) %>%
+    merge(alunos.evadiu)
+  
+  model.input$evadiu <- as.factor(model.input$evadiu)
+  return(model.input)
+}
+
+train.data <- train.data %>% convert.data.to.model.input()
+test.data <- test.data %>% convert.data.to.model.input()
+
+# Treine modelos de regressão logística;
+
+glm.fit <- train(evadiu ~ . -matricula,
+                 data=train.data,
+                 method="glm",
+                 family="binomial",
+                 na.action = na.omit)
+
+x <- predict(glm.fit, newdata=test.data)
 ```
 
