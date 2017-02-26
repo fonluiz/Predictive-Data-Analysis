@@ -9,7 +9,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+<ol>
+<h4><b><li>Separe os dados em treino e teste</li></h4></b>
+Antes de qualquer coisa é necessário processar os dados para deixá-los no formato ideal de entrada do modelo.
+
+```{r, message=FALSE, warning=FALSE}
 library(reshape2)
 library(dplyr)
 library(caret)
@@ -17,25 +21,14 @@ library(caret)
 dados <- read.csv("../data/treino_classificacao.csv")
 names(dados) <- c("matricula", "cod_disciplina", "disciplina", "ano", "periodo", "media", "evadiu")
 
-medias.abaixo.7 <- function(medias) {
-  temp <- medias[medias < 7]
-  return(length(temp))
-}
-
-dados <- dados %>%
-  group_by(matricula) %>%
-  mutate(medias_abaixo_7 = medias.abaixo.7(media))
-
-train.data <- dados %>% filter(ano >= 2010, ano != 2015)
-test.data <- dados %>% filter(ano == 2015)
-
 convert.data.to.model.input <- function(dataframe) {
-  dataframe <- dataframe %>% select(-cod_disciplina, -periodo, -ano) %>% filter(!is.na(media))
+  dataframe <- dataframe %>% select(-cod_disciplina) %>% filter(!is.na(media))
   
   alunos.evadiu <- dataframe %>%
     group_by(matricula) %>%
     summarise(evadiu = any(evadiu),
-              medias_abaixo_7 = mean(medias_abaixo_7))
+              ano = first(ano),
+              periodo = first(periodo))
     
   model.input <- dataframe %>%
     group_by(matricula, disciplina)  %>%
@@ -50,17 +43,111 @@ convert.data.to.model.input <- function(dataframe) {
   return(model.input)
 }
 
-train.data <- train.data %>% convert.data.to.model.input()
-test.data <- test.data %>% convert.data.to.model.input()
+model.input.data <- convert.data.to.model.input(dados)
+names(model.input.data) <- c("matricula", "vetorial", "calculo1", "IC", "LP1", "LPT", "P1", "evadiu", "ano", "periodo")
+```
 
-# Treine modelos de regressão logística;
+Agora que temos um dataframe no formato ideal iremos fazer uma análise geral dos dados faltantes, isto é, dos atributos cujo valor é NA.
 
+Com o gráfico abaixo podemos ver que a disciplina Leitura e Produção de Textos (LPT) possui muitos valores nulos. Isso se explica pelo fato de que até um certo tempo atrás esta disciplina não era obrigatória para alunos do primeiro período. Decidi por descartar essa disciplina e tentar inputar manualmente os dados faltantes das outras disciplinas.
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(Amelia)
+missmap(model.input.data, main = "Valores em Falta vs Valores Observados")
+```
+
+Uma análise mais detalhada sobre os dados em falta pode ser vista nos gráficos abaixo. O gráfico da esquerda mostra a porcentagem de NAs para cada disciplina e o gráfico da direita mostra a proporção de instâncias para cada configuração. Os quadros azuis significam dados observados e os vermelhos significam dados em falta. Então temos 87% dos dados sem nenhum NA, 2% dos dados com NA somente em vetorial e assim por diante.
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+model.input.data <- model.input.data %>% select(-LPT)
+
+library(VIM)
+disciplinas <- model.input.data %>% select(vetorial, calculo1, IC, LP1, P1)
+aggr_plot <- aggr(disciplinas, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(disciplinas), cex.axis=.7, gap=3, ylab=c("Histograma de dados em falta","Padrão"), cex.numbers=.7)
+```
+
+A inputação manual será feita da seguinte forma: Se a média de vetorial estiver faltando, será repetida a média de cálculo 1 e virse-versa. Se ambas estiverem em falta será colocado 0. O mesmo será feito para P1 e LP1 e para IC será computada a média das outras 4 disciplinas.
+```{r}
+model.input.data <- model.input.data %>%
+  mutate(vetorial = ifelse(is.na(vetorial),
+                            ifelse(is.na(calculo1),
+                                   0.0,
+                                   calculo1),
+                            vetorial),
+        calculo1 = ifelse(is.na(calculo1),
+                            ifelse(is.na(vetorial),
+                                   0.0,
+                                   vetorial),
+                            calculo1),
+        LP1 = ifelse(is.na(LP1),
+                            ifelse(is.na(P1),
+                                   0.0,
+                                   P1),
+                            LP1),
+        P1 = ifelse(is.na(P1),
+                            ifelse(is.na(LP1),
+                                   0.0,
+                                   LP1),
+                            P1),
+        IC = ifelse(is.na(IC),
+                    round(mean(c(vetorial, calculo1, LP1, P1)), 2),
+                    IC)
+        )
+
+```
+
+Feito isto, agora dividiremos os dados em treino e teste para começarmos a treinar nossos modelos.
+As partições de treino e teste não foram decididas aleatoriamente. Fazendo uma análise dos dados, viu-se que houve uma mudança na frequência relativa de evasões ao longo dos últimos anos e que a partir de 2011 essa frequência vem seguindo um padrão mais perceptível. Por essa razão, usarei os dados entre 2011 e 2014 (inclusives) como partição de treino e dados do ano de 2015 como partição de teste. Os dados de teste equilavem a 28% do total de dados.
+```{r, message=FALSE, warning=FALSE}
+train.data <- model.input.data %>% filter(ano >= 2011, ano != 2015) %>% select(-ano, -periodo)
+test.data <- model.input.data %>% filter(ano == 2015) %>% select(-ano, -periodo)
+```
+
+<h4><b><li>Adicionando novos atributos</li></b></h4>
+O atributo criado na parte 1 foi "a quantidade de médias abaixo de sete". Ele se mostrou um bom preditor e será utilizado para prever a evasão.
+```{r, message=FALSE, warning=FALSE}
+# Conta quantos valores estão abaixo de 7 no vetor passado
+medias.abaixo.7 <- function(medias) {
+  temp <- medias[medias < 7]
+  return(length(temp))
+}
+
+medias.abaixo.7 <- dados %>%
+  group_by(matricula) %>%
+  summarise(medias.abaixo.7 = medias.abaixo.7(media))
+
+train.data <- inner_join(train.data, medias.abaixo.7, by = "matricula")
+test.data <- inner_join(test.data, medias.abaixo.7, by = "matricula")
+```
+
+<h4><b><li>Treine modelos de regressão logística</li></b></h4>
+
+```{r, message=FALSE, warning=FALSE}
+set.seed(123)
 glm.fit <- train(evadiu ~ . -matricula,
                  data=train.data,
                  method="glm",
                  family="binomial",
                  na.action = na.omit)
+```
+<h4><b><li>Treine modelos de árvore de decisão</li></b></h4>
+```{r, message=FALSE, warning=FALSE}
+library("rpart")
 
-x <- predict(glm.fit, newdata=test.data)
+decision.tree.fit <- rpart(evadiu ~ . -matricula, data=train.data)
 ```
 
+<h4><b> <li>Interprete os coeficientes da regressão. Quais atributos parecem ser mais importantes?</li></b> </h4>
+Como podemos verificar abaixo, nenhum atributo parece ser muito importante, pois os seus p-valores estão altos. Talvez isso se deva à inputação dos dados. Ou talvez uma variável esteja sendo encoberta por outra variável. Verificaremos isso mais adiante.
+```{r}
+summary(glm.fit)
+```
+
+
+<h4> <b><li>Reporte acurácia, precision e recall no treino e teste. Como você avalia os resultados? Justifique sua resposta.</li></b> </h4>
+<h4> <b><li>Controle overfitting usando validação-cruzada (ridge e lasso na regressão logística e condições de "early stopping" nas árvores de decisão, por exemplo, profundidade da árvore)</li></b> </h4>
+<h4><b> <li>Separe os dados em treino e teste</li> Reporte acurácia, precision e recall da validação-cruzada e teste (para os melhores modelos)</b></h4>
+<h4><b> <li>Separe os dados em treino e teste</li> Aplique o melhor modelo a você mesmo(a) usando seu histórico e reporte a predição e resultado.</b></h4>
+
+```{r}
+
+```
+</ol>
