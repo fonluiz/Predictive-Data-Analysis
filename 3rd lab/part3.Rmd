@@ -1,0 +1,148 @@
+---
+title: 'Parte 3: Competindo pela melhor predição'
+author: "Luiz Fonseca"
+date: "13 de março de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<ol>
+<li><h3>Lendo e processando os dados</h3></li>
+
+```{r}
+library(reshape2)
+library(dplyr)
+
+raw.train.data <- read.csv("kaggle/lab3_kaggle_classificacao_treino.csv")
+raw.test.data <- read.csv("kaggle/lab3_kaggle_classificacao_teste.csv")
+
+names(raw.train.data) <- c("matricula", "cod_disciplina", "disciplina", "ano", "periodo", "media", "evadiu")
+names(raw.test.data) <- c("matricula", "cod_disciplina", "disciplina", "ano", "periodo", "media")
+
+convert.data.to.model.input <- function(dataframe) {
+  dataframe <- dataframe %>% select(-cod_disciplina) %>% filter(!is.na(media))
+  
+  alunos.evadiu <- dataframe %>%
+    group_by(matricula) %>%
+    summarise(evadiu = any(evadiu),
+              ano = first(ano),
+              periodo = first(periodo))
+    
+  model.input <- dataframe %>%
+    group_by(matricula, disciplina)  %>%
+    filter(media == max(media)) %>%
+    ungroup() %>%
+    select(matricula, disciplina, media) %>% 
+    mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
+    dcast(matricula ~ disciplina, mean) %>%
+    merge(alunos.evadiu)
+  
+  model.input$evadiu <- as.factor(model.input$evadiu)
+  return(model.input)
+}
+
+train.data <- convert.data.to.model.input(raw.train.data)
+names(train.data) <- c("matricula", "vetorial", "calculo1", "IC", "LP1", "LPT", "P1", "evadiu", "ano", "periodo")
+
+raw.test.data$media[is.na(raw.test.data$media)] = 0
+test.data <- raw.test.data %>% 
+  select(-cod_disciplina) %>% 
+  group_by(matricula, disciplina)  %>%
+    filter(media == max(media)) %>%
+    ungroup() %>%
+    select(matricula, disciplina, media) %>% 
+    mutate(disciplina = as.factor(gsub(" ",".",disciplina))) %>%
+    dcast(matricula ~ disciplina, mean)
+
+names(test.data) <- c("matricula", "vetorial", "calculo1", "IC", "LP1", "LPT", "P1")
+```
+
+Agora vamos inputar os dados faltantes.
+
+```{r}
+train.data <- train.data %>% select(-LPT, -ano, -periodo)
+test.data <- test.data %>% select(-LPT)
+train.data <- train.data %>%
+  mutate(vetorial = ifelse(is.na(vetorial),
+                            ifelse(is.na(calculo1),
+                                   0.0,
+                                   calculo1),
+                            vetorial),
+        calculo1 = ifelse(is.na(calculo1),
+                            ifelse(is.na(vetorial),
+                                   0.0,
+                                   vetorial),
+                            calculo1),
+        LP1 = ifelse(is.na(LP1),
+                            ifelse(is.na(P1),
+                                   0.0,
+                                   P1),
+                            LP1),
+        P1 = ifelse(is.na(P1),
+                            ifelse(is.na(LP1),
+                                   0.0,
+                                   LP1),
+                            P1),
+        IC = ifelse(is.na(IC),
+                    round(mean(c(vetorial, calculo1, LP1, P1)), 2),
+                    IC)
+        )
+
+test.data <- test.data %>%
+  mutate(vetorial = ifelse(is.na(vetorial),
+                            ifelse(is.na(calculo1),
+                                   0.0,
+                                   calculo1),
+                            vetorial),
+        calculo1 = ifelse(is.na(calculo1),
+                            ifelse(is.na(vetorial),
+                                   0.0,
+                                   vetorial),
+                            calculo1),
+        LP1 = ifelse(is.na(LP1),
+                            ifelse(is.na(P1),
+                                   0.0,
+                                   P1),
+                            LP1),
+        P1 = ifelse(is.na(P1),
+                            ifelse(is.na(LP1),
+                                   0.0,
+                                   LP1),
+                            P1),
+        IC = ifelse(is.na(IC),
+                    round(mean(c(vetorial, calculo1, LP1, P1)), 2),
+                    IC)
+        )
+```
+
+Depois irei balancear as classes.
+
+```{r}
+library(ROSE)
+
+balanced.data <- ROSE(evadiu ~ ., data = train.data, seed = 1)$data
+```
+
+Agora utilizarei Random Forest para prever a evasão.
+
+```{r}
+library(caret)
+
+rf.fit <- train(evadiu ~ .,
+                data = balanced.data %>% select(-matricula),
+                method = "rf",
+                family="binomial",
+                trControl = trainControl(method="cv",number=5))
+
+prediction <- predict(rf.fit, test.data)
+
+submission <- data.frame(MAT_ALU_MATRICULA = test.data$matricula,
+                         EVADIU = prediction)
+
+write.csv(submission, file = "submission.csv", row.names = FALSE)
+```
+
+</ol>

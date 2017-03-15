@@ -53,20 +53,20 @@ evasoes.por.ano <- full_join(evasoes.por.ano, alunos.por.ano, by = "ano")
 evasoes.por.ano$evasoes[is.na(evasoes.por.ano$evasoes)] <- 0
 evasoes.por.ano$freq_rel <- evasoes.por.ano$evasoes / evasoes.por.ano$total_alunos
 
-evasoes.por.ano$ano = factor(evasoes.por.ano$ano,
-                             levels=evasoes.por.ano$ano[order(evasoes.por.ano$evasoes)],
-                             ordered=TRUE)
+# evasoes.por.ano$ano = factor(evasoes.por.ano$ano,
+#                              levels=evasoes.por.ano$ano[order(evasoes.por.ano$evasoes)],
+#                              ordered=TRUE)
 
 ggplot(data=evasoes.por.ano, aes(x=ano, y=evasoes)) +
   geom_bar(stat="identity",  fill="#56B4E9", colour="#0072B2") + 
   coord_flip() +
   labs(title = "Evasões por ano", y = "Número de evasões", x = "ano")
 
-evasoes.por.ano$ano = factor(evasoes.por.ano$ano,
-                             levels=evasoes.por.ano$ano[order(evasoes.por.ano$freq_rel)],
-                             ordered=TRUE)
+# evasoes.por.ano$ano = factor(evasoes.por.ano$ano,
+#                              levels=evasoes.por.ano$ano[order(evasoes.por.ano$freq_rel)],
+#                              ordered=TRUE)
 
-ggplot(data=evasoes.por.ano, aes(x=ano, y=percent(freq_rel))) +
+ggplot(data=evasoes.por.ano, aes(x=ano, y=freq_rel)) +
   geom_bar(stat="identity",  fill="#56B4E9", colour="#0072B2") + 
   coord_flip() +
   labs(title = "Evasões por ano (frequência relativa)",
